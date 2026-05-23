@@ -1,15 +1,18 @@
-import { Resolver, Query, Mutation, Args, Int } from '@nestjs/graphql';
+import { Resolver, Query, Args, Int } from '@nestjs/graphql';
 import { TripsService } from './trips.service';
 import { TripType } from './trip.type';
+import { TripStatsType } from './trip-stats.type';
 
 @Resolver(() => TripType)
 export class TripsResolver {
   constructor(private readonly tripsService: TripsService) {}
 
+
   @Query(() => TripType)
   trip(@Args('id', { type: () => Int }) id: number) {
     return this.tripsService.getTripById(id);
   }
+
 
   @Query(() => [TripType])
   upcomingTrips(
@@ -19,30 +22,38 @@ export class TripsResolver {
     return this.tripsService.getUpcomingTrips(page, limit);
   }
 
-  @Mutation(() => TripType)
-  createTrip(
-    @Args('departure') departure: string,
-    @Args('destination') destination: string,
-    @Args('date') date: string,
-    @Args('seats', { type: () => Int }) seats: number,
-    @Args('price') price: number,
-  ) {
-    const driverId = 1;
-    return this.tripsService.createTrip(driverId, {
-      departure,
-      destination,
-      date,
-      seats,
-      price,
-    });
+
+  @Query(() => [TripType])
+  tripsByStatus(@Args('status') status: string) {
+    return this.tripsService.getTripsByStatus(status);
   }
 
-  @Mutation(() => TripType)
-  cancelTrip(
-    @Args('id', { type: () => Int }) id: number,
-    @Args('reason', { nullable: true }) reason?: string,
+
+  @Query(() => [TripType])
+  searchTrips(
+    @Args('departure', { nullable: true }) departure?: string,
+    @Args('destination', { nullable: true }) destination?: string,
   ) {
+    return this.tripsService.searchTrips(departure, destination);
+  }
+
+
+  @Query(() => TripStatsType)
+  tripsStats() {
     const driverId = 1;
-    return this.tripsService.cancelTrip(id, driverId, reason);
+    return this.tripsService.getTripsStats(driverId);
+  }
+
+
+  @Query(() => [TripType])
+  tripsByDateRange(@Args('from') from: string, @Args('to') to: string) {
+    return this.tripsService.getTripsByDateRange(from, to);
+  }
+
+  @Query(() => [TripType])
+  cheapestTrips(
+    @Args('limit', { type: () => Int, defaultValue: 5 }) limit: number,
+  ) {
+    return this.tripsService.getCheapestTrips(limit);
   }
 }

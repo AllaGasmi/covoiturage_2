@@ -19,7 +19,6 @@ export class TripsService {
     private eventEmitter: EventEmitter2,
   ) {}
 
-
   async createTrip(driverId: number, dto: CreateTripDto) {
     const trip = this.tripRepo.create({
       ...dto,
@@ -28,12 +27,10 @@ export class TripsService {
     });
     const saved = await this.tripRepo.save(trip);
 
-
     this.eventEmitter.emit('trip.created', { tripId: saved.id, trip: saved });
 
     return saved;
   }
-
 
   async updateTrip(tripId: number, driverId: number, dto: UpdateTripDto) {
     const trip = await this.tripRepo.findOne({ where: { id: tripId } });
@@ -57,7 +54,6 @@ export class TripsService {
     return this.tripRepo.save(trip);
   }
 
-
   async cancelTrip(tripId: number, driverId: number, reason?: string) {
     const trip = await this.tripRepo.findOne({ where: { id: tripId } });
 
@@ -70,7 +66,6 @@ export class TripsService {
     trip.status = 'cancelled';
     const updated = await this.tripRepo.save(trip);
 
-
     this.eventEmitter.emit('trip.cancelled', {
       tripId: trip.id,
       reason: reason ?? 'Annulé par le conducteur',
@@ -79,7 +74,6 @@ export class TripsService {
     return updated;
   }
 
-
   async getMyTrips(driverId: number) {
     return this.tripRepo.find({
       where: { driverId },
@@ -87,14 +81,12 @@ export class TripsService {
     });
   }
 
-
   async getTripById(tripId: number) {
     const trip = await this.tripRepo.findOne({ where: { id: tripId } });
     if (!trip) throw new NotFoundException('Trajet introuvable');
     return trip;
   }
 
- 
   async getUpcomingTrips(page = 1, limit = 10) {
     const [trips, total] = await this.tripRepo.findAndCount({
       where: {
@@ -108,7 +100,6 @@ export class TripsService {
     return trips;
   }
 
-
   async completeTrip(tripId: number) {
     const trip = await this.tripRepo.findOne({ where: { id: tripId } });
     if (!trip) throw new NotFoundException('Trajet introuvable');
@@ -116,5 +107,70 @@ export class TripsService {
     const updated = await this.tripRepo.save(trip);
     this.eventEmitter.emit('trip.completed', { tripId });
     return updated;
+  }
+
+  async getTripsByDateRange(from: string, to: string) {
+    return this.tripRepo
+      .createQueryBuilder('trip')
+      .where('trip.status = :status', { status: 'active' })
+      .andWhere('trip.date BETWEEN :from AND :to', {
+        from: new Date(from),
+        to: new Date(to),
+      })
+      .orderBy('trip.date', 'ASC')
+      .getMany();
+  }
+
+
+  async getCheapestTrips(limit = 5) {
+    return this.tripRepo.find({
+      where: {
+        status: 'active',
+        date: MoreThanOrEqual(new Date()),
+      },
+      order: { price: 'ASC' },
+      take: limit,
+    });
+  }
+
+  async searchTrips(departure?: string, destination?: string) {
+    const query = this.tripRepo
+      .createQueryBuilder('trip')
+      .where('trip.status = :status', { status: 'active' })
+      .andWhere('trip.date >= :now', { now: new Date() });
+
+    if (departure) {
+      query.andWhere('trip.departure LIKE :departure', {
+        departure: `%${departure}%`,
+      });
+    }
+
+    if (destination) {
+      query.andWhere('trip.destination LIKE :destination', {
+        destination: `%${destination}%`,
+      });
+    }
+
+    return query.orderBy('trip.date', 'ASC').getMany();
+  }
+
+
+  async getTripsStats(driverId: number) {
+    const trips = await this.tripRepo.find({ where: { driverId } });
+
+    return {
+      totalTrips: trips.length,
+      activeTrips: trips.filter((t) => t.status === 'active').length,
+      completedTrips: trips.filter((t) => t.status === 'completed').length,
+      cancelledTrips: trips.filter((t) => t.status === 'cancelled').length,
+      totalSeats: trips.reduce((sum, t) => sum + t.seats, 0),
+    };
+  }
+
+  async getTripsByStatus(status: string) {
+    return this.tripRepo.find({
+      where: { status },
+      order: { date: 'ASC' },
+    });
   }
 }

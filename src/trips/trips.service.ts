@@ -10,12 +10,15 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Trip } from './entities/trip.entity';
 import { CreateTripDto } from './dto/create-trip.dto';
 import { UpdateTripDto } from './dto/update-trip.dto';
+import { Booking } from '../bookings/entities/booking.entity';
 
 @Injectable()
 export class TripsService {
   constructor(
     @InjectRepository(Trip)
     private tripRepo: Repository<Trip>,
+    @InjectRepository(Booking)
+    private bookingRepo: Repository<Booking>,
     private eventEmitter: EventEmitter2,
   ) {}
 
@@ -112,9 +115,25 @@ export class TripsService {
   async completeTrip(tripId: number) {
     const trip = await this.tripRepo.findOne({ where: { id: tripId } });
     if (!trip) throw new NotFoundException('Trajet introuvable');
+ 
     trip.status = 'completed';
     const updated = await this.tripRepo.save(trip);
-    this.eventEmitter.emit('trip.completed', { tripId });
+
+    const bookings = await this.bookingRepo.find({
+    where: { tripId, status: 'confirmed' },
+    });
+    const passengerIds = bookings.map(b => b.passengerId);
+
+    this.eventEmitter.emit('trip.completed', { 
+      tripId, 
+      driverId: trip.driverId, 
+      passengerIds });
     return updated;
   }
+
+  async countCompletedTripsByDriver(driverId: number): Promise<number> {
+  return this.tripRepo.count({
+    where: { driverId, status: 'completed' },
+  });
+}
 }

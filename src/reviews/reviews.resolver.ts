@@ -1,0 +1,42 @@
+// ../reviews/reviews.resolver.ts
+import { Resolver, Query, Args, Int } from '@nestjs/graphql';
+import { ReviewsService } from './reviews.service';
+import { DriverStats } from './types/driver-stats.type';
+import { TripsService } from '../trips/trips.service';
+import { ReviewType } from './types/review.type';
+
+@Resolver()
+export class ReviewsResolver {
+  constructor(private reviewsService: ReviewsService, private tripsService: TripsService) {}
+
+  @Query(() => DriverStats)
+  async driverStats(@Args('id', { type: () => Int }) id: number): Promise<DriverStats> {
+    const reviews = await this.reviewsService.getDriverReviews(id);
+    const averageRating = await this.reviewsService.getDriverAverageRating(id);
+    const trips = await this.tripsService.countCompletedTripsByDriver(id);
+
+    const distribution = [1, 2, 3, 4, 5].map((stars) => ({
+      stars,
+      count: reviews.filter((r) => r.rating === stars).length,
+    }));
+
+    return { averageRating, totalReviews: reviews.length, totalTrips: trips, distribution };
+  }
+
+
+  // driver — anonymous
+  @Query(() => [ReviewType])
+  async myReviews(
+    @Args('driverId', { type: () => Int }) driverId: number, // replace with @CurrentUser() when auth ready
+  ): Promise<ReviewType[]> {
+    return this.reviewsService.getDriverReviews(driverId);
+  }
+
+  // admin — full info
+  @Query(() => [ReviewType])
+  async driverReviewsAdmin(
+    @Args('driverId', { type: () => Int }) driverId: number,
+  ): Promise<ReviewType[]> {
+    return this.reviewsService.getDriverReviewsAdmin(driverId);
+  }
+}

@@ -7,6 +7,7 @@ import {
   Param,
   Body,
   ParseIntPipe,
+  Patch,
 } from '@nestjs/common';
 import { TripsService } from './trips.service';
 import { CreateTripDto } from './dto/create-trip.dto';
@@ -39,5 +40,10 @@ export class TripsController {
   getMyTrips() {
     const driverId = 1;
     return this.tripsService.getMyTrips(driverId);
+  }
+
+  @Patch(':id/complete')
+  completeTrip(@Param('id', ParseIntPipe) id: number) {
+    return this.tripsService.completeTrip(id);
   }
 }

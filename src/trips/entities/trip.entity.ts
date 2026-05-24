@@ -4,7 +4,10 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
+import { Driver } from '../../users/entities/driver.entity';
 
 @Entity()
 export class Trip {
@@ -17,7 +20,7 @@ export class Trip {
   @Column()
   destination: string;
 
-  @Column()
+  @Column({ type: 'datetime' })
   date: Date;
 
   @Column()
@@ -31,6 +34,10 @@ export class Trip {
 
   @Column()
   driverId: number;
+
+  @ManyToOne(() => Driver, (driver) => driver.trips, { eager: false })
+  @JoinColumn({ name: 'driverId' })
+  driver: Driver;
 
   @Column({ nullable: true })
   description: string;

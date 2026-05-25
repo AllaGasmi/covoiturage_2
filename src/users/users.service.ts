@@ -11,7 +11,13 @@ export class UsersService {
     private readonly usersRepository: Repository<User>,
   ) {}
 
-  async create(name: string, email: string, password: string, phone?: string) {
+  async create(
+    name: string,
+    email: string,
+    password: string,
+    phone?: string,
+    role: string = 'user',
+  ) {
     // Check if email already exists
     const existingUser = await this.usersRepository.findOne({
       where: { email },
@@ -28,6 +34,7 @@ export class UsersService {
       email,
       password: hashedPassword,
       phone,
+      role,
     });
 
     return this.usersRepository.save(user);

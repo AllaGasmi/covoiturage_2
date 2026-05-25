@@ -22,8 +22,8 @@ export class AuthService {
   async register(registerDto: RegisterDto) {
     const { name, email, password, phone } = registerDto;
 
-    // Create user
-    const user = await this.usersService.create(name, email, password, phone);
+    // Create user with role 'user' by default
+    const user = await this.usersService.create(name, email, password, phone, 'user');
 
     // Generate tokens
     const tokens = this.generateTokens(user.id, user.email);
@@ -37,6 +37,7 @@ export class AuthService {
         id: user.id,
         name: user.name,
         email: user.email,
+        role: user.role,
       },
       ...tokens,
     };
@@ -72,6 +73,7 @@ export class AuthService {
         id: user.id,
         name: user.name,
         email: user.email,
+        role: user.role,
       },
       ...tokens,
     };

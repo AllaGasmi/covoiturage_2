@@ -39,4 +39,7 @@ export class RegisterDto {
       'Phone number must be in Tunisian format (e.g., +216 20123456, 020123456, or 20123456)',
   })
   phone?: string;
+
+  // Note: Role is automatically set to 'user' on registration
+  // Only admins can change roles
 }

@@ -1,14 +1,16 @@
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
+import express from 'express';
+import { join } from 'path';
+import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-
-  app.use(require('express').json()); 
-  app.use(require('express').urlencoded({ extended: true })); 
-
+  app.enableCors({ origin: true });
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
+  app.use('/front', express.static(join(__dirname, '..', 'frontend')));
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -18,7 +20,9 @@ async function bootstrap() {
   );
 
   await app.listen(3000);
-  console.log(' App running on http://localhost:3000');
-  console.log(' GraphQL on http://localhost:3000/graphql');
+  console.log('API running on http://localhost:3000');
+  console.log('GraphQL on http://localhost:3000/graphql');
+  console.log('Frontend on http://localhost:3000/front');
 }
+
 bootstrap();

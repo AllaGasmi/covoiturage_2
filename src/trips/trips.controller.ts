@@ -1,26 +1,26 @@
 import {
+  Body,
   Controller,
-  Post,
-  Put,
   Delete,
   Get,
   Param,
-  Body,
   ParseIntPipe,
   Patch,
+  Post,
+  Put,
 } from '@nestjs/common';
-import { TripsService } from './trips.service';
 import { CreateTripDto } from './dto/create-trip.dto';
 import { UpdateTripDto } from './dto/update-trip.dto';
+import { TripsService } from './trips.service';
 
 @Controller('trips')
-// @UseGuards(JwtAuthGuard)  // à activer qd auth mise en place
+// @UseGuards(JwtAuthGuard)  // activate when auth is in place
 export class TripsController {
   constructor(private readonly tripsService: TripsService) {}
 
   @Post()
   create(@Body() dto: CreateTripDto) {
-    const driverId = 1; // ← remplace par req.user.id avec auth
+    const driverId = 1; // replace with req.user.id once auth is in place
     return this.tripsService.createTrip(driverId, dto);
   }
 
@@ -40,6 +40,11 @@ export class TripsController {
   getMyTrips() {
     const driverId = 1;
     return this.tripsService.getMyTrips(driverId);
+  }
+
+  @Get('driver/:driverId')
+  getTripsByDriver(@Param('driverId', ParseIntPipe) driverId: number) {
+    return this.tripsService.getTripsByDriver(driverId);
   }
 
   @Patch(':id/complete')

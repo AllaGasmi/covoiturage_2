@@ -2,6 +2,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
 import { Trip } from '../../trips/entities/trip.entity';
+import { ReviewTag } from '../enums/review-tag.enum';
 
 @Entity()
 export class Review {
@@ -14,6 +15,9 @@ export class Review {
   @Column({ nullable: true })
   comment: string;
 
+  @Column({ type: 'simple-array', nullable: true })
+  tags: ReviewTag[];
+  
   @ManyToOne(() => User)
   passenger: User;
 

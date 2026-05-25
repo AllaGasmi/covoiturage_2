@@ -1,16 +1,16 @@
 import {
-  Injectable,
-  NotFoundException,
   BadRequestException,
   ForbiddenException,
+  Injectable,
+  NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThanOrEqual } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { Trip } from './entities/trip.entity';
+import { MoreThanOrEqual, Repository } from 'typeorm';
+import { Booking } from '../bookings/entities/booking.entity';
 import { CreateTripDto } from './dto/create-trip.dto';
 import { UpdateTripDto } from './dto/update-trip.dto';
-import { Booking } from '../bookings/entities/booking.entity';
+import { Trip } from './entities/trip.entity';
 
 @Injectable()
 export class TripsService {
@@ -22,7 +22,6 @@ export class TripsService {
     private eventEmitter: EventEmitter2,
   ) {}
 
-
   async createTrip(driverId: number, dto: CreateTripDto) {
     const trip = this.tripRepo.create({
       ...dto,
@@ -31,75 +30,90 @@ export class TripsService {
     });
     const saved = await this.tripRepo.save(trip);
 
-
     this.eventEmitter.emit('trip.created', { tripId: saved.id, trip: saved });
 
     return saved;
   }
 
-
   async updateTrip(tripId: number, driverId: number, dto: UpdateTripDto) {
     const trip = await this.tripRepo.findOne({ where: { id: tripId } });
 
-    if (!trip) throw new NotFoundException('Trajet introuvable');
-    if (trip.driverId !== driverId)
+    if (!trip) {
+      throw new NotFoundException('Trajet introuvable');
+    }
+
+    if (trip.driverId !== driverId) {
       throw new ForbiddenException('Pas ton trajet');
-    if (trip.status !== 'active')
-      throw new BadRequestException('Trajet annulé ou terminé');
-    if (new Date(trip.date) <= new Date())
-      throw new BadRequestException('Trajet déjà parti');
+    }
+
+    if (trip.status !== 'active') {
+      throw new BadRequestException('Trajet annule ou termine');
+    }
+
+    if (new Date(trip.date) <= new Date()) {
+      throw new BadRequestException('Trajet deja parti');
+    }
 
     Object.assign(trip, {
-      ...(dto.departure && { departure: dto.departure }),
-      ...(dto.destination && { destination: dto.destination }),
-      ...(dto.date && { date: new Date(dto.date) }),
-      ...(dto.seats !== undefined && { seats: dto.seats }),
-      ...(dto.price !== undefined && { price: dto.price }),
+      ...(dto.departure ? { departure: dto.departure } : {}),
+      ...(dto.destination ? { destination: dto.destination } : {}),
+      ...(dto.date ? { date: new Date(dto.date) } : {}),
+      ...(dto.seats !== undefined ? { seats: dto.seats } : {}),
+      ...(dto.price !== undefined ? { price: dto.price } : {}),
     });
 
     return this.tripRepo.save(trip);
   }
 
-
   async cancelTrip(tripId: number, driverId: number, reason?: string) {
     const trip = await this.tripRepo.findOne({ where: { id: tripId } });
 
-    if (!trip) throw new NotFoundException('Trajet introuvable');
-    if (trip.driverId !== driverId)
+    if (!trip) {
+      throw new NotFoundException('Trajet introuvable');
+    }
+
+    if (trip.driverId !== driverId) {
       throw new ForbiddenException('Pas ton trajet');
-    if (trip.status !== 'active')
-      throw new BadRequestException('Trajet déjà annulé');
+    }
+
+    if (trip.status !== 'active') {
+      throw new BadRequestException('Trajet deja annule');
+    }
 
     trip.status = 'cancelled';
     const updated = await this.tripRepo.save(trip);
 
-
     this.eventEmitter.emit('trip.cancelled', {
       tripId: trip.id,
-      reason: reason ?? 'Annulé par le conducteur',
+      reason: reason ?? 'Annule par le conducteur',
     });
 
     return updated;
   }
 
-
   async getMyTrips(driverId: number) {
+    return this.getTripsByDriver(driverId);
+  }
+
+  async getTripsByDriver(driverId: number) {
     return this.tripRepo.find({
       where: { driverId },
       order: { date: 'DESC' },
     });
   }
 
-
   async getTripById(tripId: number) {
     const trip = await this.tripRepo.findOne({ where: { id: tripId } });
-    if (!trip) throw new NotFoundException('Trajet introuvable');
+
+    if (!trip) {
+      throw new NotFoundException('Trajet introuvable');
+    }
+
     return trip;
   }
 
- 
   async getUpcomingTrips(page = 1, limit = 10) {
-    const [trips, total] = await this.tripRepo.findAndCount({
+    const [trips] = await this.tripRepo.findAndCount({
       where: {
         status: 'active',
         date: MoreThanOrEqual(new Date()),
@@ -108,32 +122,48 @@ export class TripsService {
       skip: (page - 1) * limit,
       take: limit,
     });
+
     return trips;
   }
 
-
   async completeTrip(tripId: number) {
     const trip = await this.tripRepo.findOne({ where: { id: tripId } });
-    if (!trip) throw new NotFoundException('Trajet introuvable');
- 
+
+    if (!trip) {
+      throw new NotFoundException('Trajet introuvable');
+    }
+
+    if (trip.status !== 'active') {
+      throw new BadRequestException('Seuls les trajets actifs peuvent etre termines');
+    }
+
     trip.status = 'completed';
     const updated = await this.tripRepo.save(trip);
 
     const bookings = await this.bookingRepo.find({
-    where: { tripId, status: 'confirmed' },
+      where: { tripId, status: 'confirmed' },
     });
-    const passengerIds = bookings.map(b => b.passengerId);
+    const passengerIds = bookings.map((booking) => booking.passengerId);
 
-    this.eventEmitter.emit('trip.completed', { 
-      tripId, 
-      driverId: trip.driverId, 
-      passengerIds });
+    this.eventEmitter.emit('trip.completed', {
+      tripId,
+      driverId: trip.driverId,
+      passengerIds,
+      trip: {
+        id: trip.id,
+        departure: trip.departure,
+        destination: trip.destination,
+        date: trip.date,
+        status: updated.status,
+      },
+    });
+
     return updated;
   }
 
   async countCompletedTripsByDriver(driverId: number): Promise<number> {
-  return this.tripRepo.count({
-    where: { driverId, status: 'completed' },
-  });
-}
+    return this.tripRepo.count({
+      where: { driverId, status: 'completed' },
+    });
+  }
 }

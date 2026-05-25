@@ -13,12 +13,25 @@ export class ReviewsController {
   @Post('reviews')
   submitReview(@Body() body: CreateReviewDto) {
   return this.reviewsService.submitReview(body);
-}
+  }
 
   @Get('reviews/driver/:id')
-getDriverReviews(@Param('id', ParseIntPipe) id: number) {
-  return this.reviewsService.getDriverReviews(id);
-}
+  getDriverReviews(@Param('id', ParseIntPipe) id: number) {
+    return this.reviewsService.getDriverReviews(id);
+  }
+
+  @Patch('reviews/:id')
+  updateReview(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateReviewDto,
+  ) {
+    return this.reviewsService.updateReview(id, dto);
+  }
+
+  @Delete('reviews/:id')
+  deleteReview(@Param('id', ParseIntPipe) id: number) {
+    return this.reviewsService.deleteReview(id);
+  }
 
   @Get('trips/:id/reviews')
   getTripReviews(@Param('id', ParseIntPipe) id: number) {
@@ -48,9 +61,24 @@ getDriverReviews(@Param('id', ParseIntPipe) id: number) {
     );
 
     }
-  
 
-      
-  
+  @Sse('driver/:id/badges/live')
+  streamBadgeUnlocks(@Param('id', ParseIntPipe) driverId: number): Observable<MessageEvent> {
+    return fromEvent(this.eventEmitter, 'badge.unlocked').pipe(
+      filter((payload: any) => payload.driverId === driverId),
+      map((payload: any) => ({
+        type: 'badge.unlocked',
+        data: {
+          badges: payload.badges,
+          message: `🏆 Nouveau badge débloqué !`,
+        },
+      } as MessageEvent)),
+    );
+  }
 
+@Post('driver/:id/recompute-badges')
+recomputeBadges(@Param('id', ParseIntPipe) driverId: number) {
+  return this.reviewsService.computeAndSaveBadges(driverId);
+}
+  
 }

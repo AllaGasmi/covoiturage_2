@@ -13,16 +13,42 @@ export class ReviewsResolver {
   async driverStats(@Args('id', { type: () => Int }) id: number): Promise<DriverStats> {
     const reviews = await this.reviewsService.getDriverReviews(id);
     const averageRating = await this.reviewsService.getDriverAverageRating(id);
-    const trips = await this.tripsService.countCompletedTripsByDriver(id);
+    const totalTrips = await this.tripsService.countCompletedTripsByDriver(id);
 
     const distribution = [1, 2, 3, 4, 5].map((stars) => ({
       stars,
       count: reviews.filter((r) => r.rating === stars).length,
     }));
 
-    return { averageRating, totalReviews: reviews.length, totalTrips: trips, distribution };
-  }
+    // flatten all tags and count occurrences
+    const tagCounts: Record<string, number> = {};
+    reviews.forEach(r => {
+      r.tags?.forEach(tag => {
+        tagCounts[tag] = (tagCounts[tag] ?? 0) + 1;
+      });
+    });
 
+    const topTags = Object.entries(tagCounts)
+      .map(([tag, count]) => ({ tag, count }))
+      .sort((a, b) => b.count - a.count);
+
+    const [lastTenAverage, positiveRate, trend, monthlyAverages, badgeRecords] = await Promise.all([
+    this.reviewsService.getLastTenAverage(id),
+    this.reviewsService.getPositiveRate(id),
+    this.reviewsService.getTrend(id),
+    this.reviewsService.getMonthlyAverages(id),
+    this.reviewsService.getDriverBadges(id),
+    ]);
+    return {
+      averageRating,
+      totalReviews: reviews.length,
+      totalTrips,
+        distribution,
+        topTags,
+        analytics: { lastTenAverage, positiveRate, trend, monthlyAverages },
+        badges: badgeRecords.map(b => b.badge),
+      };
+  }
 
   // driver — anonymous
   @Query(() => [ReviewType])
@@ -39,4 +65,8 @@ export class ReviewsResolver {
   ): Promise<ReviewType[]> {
     return this.reviewsService.getDriverReviewsAdmin(driverId);
   }
+
+  
 }
+
+

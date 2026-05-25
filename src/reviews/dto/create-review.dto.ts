@@ -1,4 +1,5 @@
-import { IsInt, IsOptional, IsString, Min, Max } from 'class-validator';
+import { IsInt, IsOptional, IsString, Min, Max, IsEnum, IsArray } from 'class-validator';
+import { ReviewTag } from '../enums/review-tag.enum';
 
 export class CreateReviewDto {
   @IsInt()
@@ -18,4 +19,9 @@ export class CreateReviewDto {
   @IsOptional()
   @IsString()
   comment?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsEnum(ReviewTag, { each: true })
+  tags?: ReviewTag[];
 }

@@ -1,13 +1,18 @@
 import { Module } from '@nestjs/common';
-import { BookingsService } from './bookings.service';
-import { BookingsController } from './bookings.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Booking } from './entities/booking.entity';
+import { Trip } from '../trips/entities/trip.entity';
+import { BookingsService } from './bookings.service';
+import { BookingsController } from './bookings.controller';
+import { BookingsResolver } from './bookings.resolver';
+import { TripCancelledListener } from './trip-cancelled.listener';
 
 @Module({
+  imports: [
+    TypeOrmModule.forFeature([Booking, Trip]),
+  ],
+  providers: [BookingsService, BookingsResolver, TripCancelledListener],
   controllers: [BookingsController],
-  providers: [BookingsService],
-  imports: [TypeOrmModule.forFeature([Booking])],
-  exports: [TypeOrmModule],
+  exports: [BookingsService],
 })
 export class BookingsModule {}

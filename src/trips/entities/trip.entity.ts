@@ -4,9 +4,14 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  ManyToOne,
+  OneToMany,
+  JoinColumn,
 } from 'typeorm';
+import { User } from '../../users/entities/user.entity';
+import { Booking } from 'src/bookings/entities/booking.entity';
 
-@Entity()
+@Entity('trips')
 export class Trip {
   @PrimaryGeneratedColumn()
   id: number;
@@ -17,7 +22,7 @@ export class Trip {
   @Column()
   destination: string;
 
-  @Column()
+  @Column({ type: 'datetime' })
   date: Date;
 
   @Column()
@@ -31,6 +36,10 @@ export class Trip {
 
   @Column()
   driverId: number;
+
+  @ManyToOne(() => User, (user) => user.trips, { eager: false })
+  @JoinColumn({ name: 'driverId' })
+  driver: User;
 
   @Column({ nullable: true })
   description: string;
@@ -46,4 +55,8 @@ export class Trip {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  // // Relations
+  // @OneToMany(() => Booking, (booking) => booking.trip, { cascade: true })
+  // bookings: Booking[];
 }

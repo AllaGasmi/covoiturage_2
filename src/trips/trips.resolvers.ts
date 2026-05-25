@@ -1,48 +1,61 @@
-import { Resolver, Query, Mutation, Args, Int } from '@nestjs/graphql';
+import { Resolver, Query, Args, Int, ResolveField, Parent, Context } from '@nestjs/graphql';
 import { TripsService } from './trips.service';
-import { TripType } from './trip.type';
+import { TripType } from './graphql/trip.type';
+import { TripStatsType } from './graphql/trip-stats.type';
+import { SearchTripsInput } from './graphql/search-trips.input';
+import { PaginatedTripsType } from './graphql/paginated-trips.type';
+import { DriverProfileType } from './graphql/driver-profile.type';
+import { DriverLoader } from './driver.loader';
+import { Trip } from './entities/trip.entity';
 
 @Resolver(() => TripType)
 export class TripsResolver {
-  constructor(private readonly tripsService: TripsService) {}
+  constructor(
+    private readonly tripsService: TripsService,
+    private readonly driverLoader: DriverLoader,
+  ) { }
+
 
   @Query(() => TripType)
   trip(@Args('id', { type: () => Int }) id: number) {
     return this.tripsService.getTripById(id);
   }
 
+
+  @Query(() => PaginatedTripsType)
+  searchTrips(
+    @Args('filters', { type: () => SearchTripsInput, nullable: true })
+    filters?: SearchTripsInput,
+  ) {
+    return this.tripsService.searchTrips(filters ?? {});
+  }
+
+
   @Query(() => [TripType])
-  upcomingTrips(
-    @Args('page', { type: () => Int, defaultValue: 1 }) page: number,
-    @Args('limit', { type: () => Int, defaultValue: 10 }) limit: number,
-  ) {
-    return this.tripsService.getUpcomingTrips(page, limit);
-  }
-
-  @Mutation(() => TripType)
-  createTrip(
-    @Args('departure') departure: string,
-    @Args('destination') destination: string,
+  tripsNearDate(
     @Args('date') date: string,
-    @Args('seats', { type: () => Int }) seats: number,
-    @Args('price') price: number,
+    @Args('rangeDays', { type: () => Int }) rangeDays: number,
   ) {
-    const driverId = 1;
-    return this.tripsService.createTrip(driverId, {
-      departure,
-      destination,
-      date,
-      seats,
-      price,
-    });
+    return this.tripsService.tripsNearDate(date, rangeDays);
   }
 
-  @Mutation(() => TripType)
-  cancelTrip(
-    @Args('id', { type: () => Int }) id: number,
-    @Args('reason', { nullable: true }) reason?: string,
-  ) {
-    const driverId = 1;
-    return this.tripsService.cancelTrip(id, driverId, reason);
+
+  @Query(() => [TripType])
+  tripsByStatus(@Args('status') status: string) {
+    return this.tripsService.getTripsByStatus(status);
   }
+
+
+  @Query(() => TripStatsType)
+  tripsStats(@Context() context: any) {
+    const driverId = context.req.user.id;
+    return this.tripsService.getTripsStats(driverId);
+  }
+
+
+  @ResolveField('driver', () => DriverProfileType, { nullable: true })
+  async resolveDriver(@Parent() trip: Trip) {
+    return this.driverLoader.loader.load(trip.driverId);
+  }
+
 }

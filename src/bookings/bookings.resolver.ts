@@ -1,4 +1,4 @@
-import {Resolver, Query, Args, Int, ResolveField, Parent} from '@nestjs/graphql';
+import {Resolver, Query, Args, Int, ResolveField, Parent, Context} from '@nestjs/graphql';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { BookingsService } from './bookings.service';
@@ -16,8 +16,8 @@ export class BookingsResolver {
   ) {}
 
   @Query(() => [BookingWithTripType])
-  myBookings() {
-    const passengerId = 2; // ← remplacer par req.user.id quand auth prête
+  myBookings(@Context() context: any) {
+    const passengerId = context.req.user.id;
     return this.bookingsService.getMyBookings(passengerId);
   }
 

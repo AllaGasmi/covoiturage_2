@@ -1,4 +1,4 @@
-import { Resolver, Query, Args, Int, ResolveField, Parent } from '@nestjs/graphql';
+import { Resolver, Query, Args, Int, ResolveField, Parent, Context } from '@nestjs/graphql';
 import { TripsService } from './trips.service';
 import { TripType } from './graphql/trip.type';
 import { TripStatsType } from './graphql/trip-stats.type';
@@ -47,8 +47,8 @@ export class TripsResolver {
 
 
   @Query(() => TripStatsType)
-  tripsStats() {
-    const driverId = 1; // ← replace with req.user.id when auth is set up
+  tripsStats(@Context() context: any) {
+    const driverId = context.req.user.id;
     return this.tripsService.getTripsStats(driverId);
   }
 

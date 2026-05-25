@@ -1,4 +1,4 @@
-import { ObjectType, Field, Int, Float, GraphQLISODateTime } from '@nestjs/graphql';
+import { ObjectType, Field, Int, Float } from '@nestjs/graphql';
 
 @ObjectType()
 export class TripType {
@@ -11,7 +11,7 @@ export class TripType {
   @Field()
   destination: string;
 
-  @Field(() => GraphQLISODateTime)
+  @Field()
   date: Date;
 
   @Field(() => Int)
@@ -26,14 +26,15 @@ export class TripType {
   @Field(() => Int)
   driverId: number;
 
-  @Field({ nullable: true })
-  description: string;
 
   @Field({ nullable: true })
-  carModel: string;
+  description: string; 
+
+  @Field({ nullable: true })
+  carModel: string; 
 
   @Field(() => Int)
-  seatsBooked: number;
+  seatsBooked: number; 
 
   @Field()
   createdAt: Date;

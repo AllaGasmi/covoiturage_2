@@ -65,5 +65,30 @@ export class UsersService {
   async updateUser(userId: number, updateData: Partial<User>) {
     return this.usersRepository.update(userId, updateData);
   }
+
+  async updateUserProfile(userId: number, updateData: any) {
+    // Find user first
+    const user = await this.findById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Update only the allowed fields
+    const allowedFields = ['name', 'profileImage', 'phone', 'emergencyContact', 'emergencyPhone'];
+    const updatePayload: any = {};
+
+    for (const field of allowedFields) {
+      if (updateData[field] !== undefined) {
+        updatePayload[field] = updateData[field];
+      }
+    }
+
+    if (Object.keys(updatePayload).length > 0) {
+      await this.usersRepository.update(userId, updatePayload);
+    }
+
+    // Return updated user
+    return this.findById(userId);
+  }
 }
 

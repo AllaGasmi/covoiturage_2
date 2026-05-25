@@ -7,7 +7,7 @@ import { ReviewType } from './types/review.type';
 import { UseGuards } from '@nestjs/common';
 import { User } from 'src/users/entities/user.entity';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
-import { GqlAuthGuard } from 'src/auth/guards/gql-auth.guard';
+import { GqlJwtAuthGuard } from 'src/auth/guards/gql-jwt-auth.guard';
 
 @Resolver()
 export class ReviewsResolver {
@@ -56,14 +56,14 @@ export class ReviewsResolver {
 
   // driver — anonymous
   @Query(() => [ReviewType])
-  @UseGuards(GqlAuthGuard)
+  @UseGuards(GqlJwtAuthGuard)
   async myReviews(@CurrentUser() user: User): Promise<ReviewType[]> {
     return this.reviewsService.getDriverReviews(user.id);
   }
 
   // admin — full info
   @Query(() => [ReviewType])
-  @UseGuards(GqlAuthGuard)
+  @UseGuards(GqlJwtAuthGuard)
   async driverReviewsAdmin(@Args('driverId', { type: () => Int }) driverId: number,): Promise<ReviewType[]> {
     return this.reviewsService.getDriverReviewsAdmin(driverId);
   }

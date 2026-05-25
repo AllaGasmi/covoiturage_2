@@ -1,5 +1,7 @@
 import {
 Module,
+NestModule,
+MiddlewareConsumer,
 } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -13,6 +15,9 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { BookingsModule } from './bookings/bookings.module';
+import { MailModule } from './mail/mail.module';
+import { CommonModule } from './common/common.module';
+import { LoggingMiddleware } from './common/middleware/logging.middleware';
 
 
 
@@ -34,21 +39,28 @@ import { BookingsModule } from './bookings/bookings.module';
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
         autoLoadEntities: true,
-        synchronize: false,
+        synchronize: true,
       }),
     }),
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
       autoSchemaFile: true,
       playground: true,
+      context: ({ req }) => ({ req }),
     }),
     EventEmitterModule.forRoot(),
 
-    TripsModule,BookingsModule,AuthModule,UsersModule
+    TripsModule,BookingsModule,AuthModule,UsersModule,MailModule,CommonModule
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(LoggingMiddleware)
+      .forRoutes('*'); // Appliquer à toutes les routes
+  }
+}
 
 

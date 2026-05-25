@@ -8,6 +8,8 @@ import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { UsersModule } from 'src/users/users.module';
 import { RefreshToken } from 'src/users/entities/refresh-token.entity';
+import { UserRegisteredListener } from 'src/events/user-registered.listener';
+import { MailModule } from 'src/mail/mail.module';
 
 @Module({
   imports: [
@@ -28,9 +30,10 @@ import { RefreshToken } from 'src/users/entities/refresh-token.entity';
       },
     }),
     UsersModule,
+    MailModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, UserRegisteredListener],
   exports: [AuthService],
 })
 export class AuthModule {}

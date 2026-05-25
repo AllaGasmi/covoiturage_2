@@ -3,11 +3,13 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import * as jwt from 'jsonwebtoken';
 import { RefreshToken } from 'src/users/entities/refresh-token.entity';
 import { UsersService } from 'src/users/users.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { UserRegisteredEvent } from 'src/events/user.events';
 
 @Injectable()
 export class AuthService {
@@ -15,6 +17,7 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly eventEmitter: EventEmitter2,
     @InjectRepository(RefreshToken)
     private readonly refreshTokenRepository: Repository<RefreshToken>,
   ) {}
@@ -24,6 +27,12 @@ export class AuthService {
 
     // Create user with role 'user' by default
     const user = await this.usersService.create(name, email, password, phone, 'user');
+
+    // Emit user.registered event
+    this.eventEmitter.emit(
+      'user.registered',
+      new UserRegisteredEvent(user.id, user.email, user.name, user.role, user.createdAt),
+    );
 
     // Generate tokens
     const tokens = this.generateTokens(user.id, user.email);

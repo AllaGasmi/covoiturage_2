@@ -33,13 +33,14 @@ import { UsersModule } from './users/users.module';
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_NAME'),
         autoLoadEntities: true,
-        synchronize: false,
+        synchronize: true,
       }),
     }),
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
       autoSchemaFile: true,
       playground: true,
+      context: ({ req }) => ({ req }),
     }),
     EventEmitterModule.forRoot(),
 

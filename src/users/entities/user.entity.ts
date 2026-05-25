@@ -37,7 +37,7 @@ export class User {
   @Column({ default: false })
   isEmailVerified: boolean;
 
-  @Column({ type: 'varchar', default: 'user', enum: ['user', 'admin'] })
+  @Column({ type: 'enum', enum: ['user', 'admin'], default: 'user' })
   role: string;
 
   // Champs Passenger

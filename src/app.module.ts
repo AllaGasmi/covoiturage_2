@@ -12,7 +12,6 @@ import { TripsModule } from './trips/trips.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { ReviewsModule } from './reviews/reviews.module';
-import { UserModule } from './user/user.module';
 import { BookingsModule } from './bookings/bookings.module';
 
 

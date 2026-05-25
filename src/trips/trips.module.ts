@@ -11,10 +11,9 @@ import { TripsResolver } from './trips.resolvers';
 import { DriverLoader } from './driver.loader';
 import { TripCreatedListener } from './trip-created.listener';
 import { SHARED_PUBSUB } from './trip-created.listener';
-import { BookingsModule } from '../bookings/bookings.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Trip, User, PassengerAlert, Booking]), BookingsModule],
+  imports: [TypeOrmModule.forFeature([Trip, User, PassengerAlert, Booking])],
   controllers: [TripsController],
   providers: [
     TripsService,

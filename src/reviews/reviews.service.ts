@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { MoreThanOrEqual, Repository } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -25,7 +25,7 @@ export class ReviewsService {
     private tripsService: TripsService,
   ) {}
 
-  async submitReview(body: CreateReviewDto) {
+  async submitReview(body: CreateReviewDto & { passengerId: number }) {
     
     const trip = await this.tripRepo.findOne({ where: { id: body.tripId } });
 
@@ -70,9 +70,13 @@ export class ReviewsService {
     return review;
   }
 
-  async updateReview(id: number, dto: UpdateReviewDto) {
+  async updateReview(id: number, dto: UpdateReviewDto, userId: number) {
     const review = await this.reviewRepo.findOne({ where: { id } });
     if (!review) throw new NotFoundException('Avis introuvable');
+
+    if (review.passengerId !== userId) {
+      throw new ForbiddenException('Vous ne pouvez modifier que vos propres avis');
+    }
 
     Object.assign(review, {
       ...(dto.rating && { rating: dto.rating }),
@@ -85,9 +89,12 @@ export class ReviewsService {
 
 
 
-  async deleteReview(id: number) {
+  async deleteReview(id: number, userId: number) {
     const review = await this.reviewRepo.findOne({ where: { id } });
     if (!review) throw new NotFoundException('Avis introuvable');
+    if (review.passengerId !== userId) {
+      throw new ForbiddenException('Vous ne pouvez supprimer que vos propres avis');
+    }
     await this.reviewRepo.remove(review);
     return { message: 'Avis supprimé' };
   }
@@ -237,7 +244,6 @@ export class ReviewsService {
   async getDriverBadges(driverId: number) {
     return this.badgeRepo.find({ where: { driverId } });
   }
-
 
 
 }

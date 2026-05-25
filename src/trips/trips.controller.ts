@@ -1,17 +1,19 @@
 import {
-  Body,
   Controller,
+  Post,
+  Put,
   Delete,
   Get,
   Param,
+  Body,
   ParseIntPipe,
   UseGuards,
   Req,
 } from '@nestjs/common';
+import { TripsService } from './trips.service';
 import { CreateTripDto } from './dto/create-trip.dto';
 import { UpdateTripDto } from './dto/update-trip.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
-import { TripsService } from './trips.service';
 
 @Controller('trips')
 @UseGuards(JwtAuthGuard)  
@@ -40,15 +42,5 @@ export class TripsController {
   getMyTrips(@Req() request: any) {
     const driverId = request.user.id;
     return this.tripsService.getMyTrips(driverId);
-  }
-
-  @Get('driver/:driverId')
-  getTripsByDriver(@Param('driverId', ParseIntPipe) driverId: number) {
-    return this.tripsService.getTripsByDriver(driverId);
-  }
-
-  @Patch(':id/complete')
-  completeTrip(@Param('id', ParseIntPipe) id: number) {
-    return this.tripsService.completeTrip(id);
   }
 }

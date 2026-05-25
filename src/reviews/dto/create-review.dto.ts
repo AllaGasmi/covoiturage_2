@@ -6,9 +6,6 @@ export class CreateReviewDto {
   driverId: number;
 
   @IsInt()
-  passengerId: number;
-
-  @IsInt()
   tripId: number;
 
   @IsInt()

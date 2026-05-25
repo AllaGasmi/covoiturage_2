@@ -4,6 +4,10 @@ import { ReviewsService } from './reviews.service';
 import { DriverStats } from './types/driver-stats.type';
 import { TripsService } from '../trips/trips.service';
 import { ReviewType } from './types/review.type';
+import { UseGuards } from '@nestjs/common';
+import { User } from 'src/users/entities/user.entity';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { GqlAuthGuard } from 'src/auth/guards/gql-auth.guard';
 
 @Resolver()
 export class ReviewsResolver {
@@ -52,17 +56,15 @@ export class ReviewsResolver {
 
   // driver — anonymous
   @Query(() => [ReviewType])
-  async myReviews(
-    @Args('driverId', { type: () => Int }) driverId: number, // replace with @CurrentUser() when auth ready
-  ): Promise<ReviewType[]> {
-    return this.reviewsService.getDriverReviews(driverId);
+  @UseGuards(GqlAuthGuard)
+  async myReviews(@CurrentUser() user: User): Promise<ReviewType[]> {
+    return this.reviewsService.getDriverReviews(user.id);
   }
 
   // admin — full info
   @Query(() => [ReviewType])
-  async driverReviewsAdmin(
-    @Args('driverId', { type: () => Int }) driverId: number,
-  ): Promise<ReviewType[]> {
+  @UseGuards(GqlAuthGuard)
+  async driverReviewsAdmin(@Args('driverId', { type: () => Int }) driverId: number,): Promise<ReviewType[]> {
     return this.reviewsService.getDriverReviewsAdmin(driverId);
   }
 

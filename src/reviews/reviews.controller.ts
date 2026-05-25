@@ -1,9 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, Sse } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, Sse, UseGuards } from '@nestjs/common';
 import { ReviewsService } from './reviews.service';
 import { CreateReviewDto } from './dto/create-review.dto';
 import { UpdateReviewDto } from './dto/update-review.dto';
 import { filter, from, fromEvent, map, Observable, Subject, switchMap } from 'rxjs';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
+import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { User } from 'src/users/entities/user.entity';
 
 
 @Controller()
@@ -11,8 +14,9 @@ export class ReviewsController {
   constructor(private reviewsService: ReviewsService, private eventEmitter: EventEmitter2) {}
 
   @Post('reviews')
-  submitReview(@Body() body: CreateReviewDto) {
-  return this.reviewsService.submitReview(body);
+  @UseGuards(JwtAuthGuard)
+  submitReview(@Body() body: CreateReviewDto, @CurrentUser() user: User) {
+    return this.reviewsService.submitReview({ ...body, passengerId: user.id });
   }
 
   @Get('reviews/driver/:id')
@@ -21,16 +25,19 @@ export class ReviewsController {
   }
 
   @Patch('reviews/:id')
+  @UseGuards(JwtAuthGuard)
   updateReview(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateReviewDto,
+    @CurrentUser() user: User
   ) {
-    return this.reviewsService.updateReview(id, dto);
+    return this.reviewsService.updateReview(id, dto, user.id);
   }
 
   @Delete('reviews/:id')
-  deleteReview(@Param('id', ParseIntPipe) id: number) {
-    return this.reviewsService.deleteReview(id);
+  @UseGuards(JwtAuthGuard)
+  deleteReview(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: User) {
+    return this.reviewsService.deleteReview(id, user.id);
   }
 
   @Get('trips/:id/reviews')

@@ -56,7 +56,7 @@ export class Trip {
   @UpdateDateColumn()
   updatedAt: Date;
 
-  // Relations
-  @OneToMany(() => Booking, (booking) => booking.trip, { cascade: true })
-  bookings: Booking[];
+  // // Relations
+  // @OneToMany(() => Booking, (booking) => booking.trip, { cascade: true })
+  // bookings: Booking[];
 }

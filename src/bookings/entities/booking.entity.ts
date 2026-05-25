@@ -1,19 +1,6 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-  ManyToOne,
-  JoinColumn,
-  Index,
-} from 'typeorm';
-import { User } from 'src/users/entities/user.entity';
-import { Trip } from 'src/trips/entities/trip.entity';
+import {  Entity, PrimaryGeneratedColumn, Column,CreateDateColumn, UpdateDateColumn,} from 'typeorm';
 
-@Entity('bookings')
-@Index(['passengerId', 'tripId'])
-@Index(['passengerId', 'status'])
+@Entity()
 export class Booking {
   @PrimaryGeneratedColumn()
   id: number;
@@ -24,36 +11,15 @@ export class Booking {
   @Column()
   tripId: number;
 
-  @Column({ default: 'pending' })
-  status: string; // pending, confirmed, cancelled, completed
-
-  @Column({ default: 1 })
-  seatsBooked: number;
+  @Column({ default: 'confirmed' })
+  status: string;
 
   @Column({ nullable: true })
-  pickupLocation: string;
-
-  @Column({ nullable: true })
-  dropoffLocation: string;
-
-  @Column('decimal', { precision: 10, scale: 2, nullable: true })
-  totalPrice: number;
+  cancelReason: string;
 
   @CreateDateColumn()
-  bookedAt: Date;
+  createdAt: Date;
 
   @UpdateDateColumn()
   updatedAt: Date;
-
-  @Column({ nullable: true, type: 'datetime' })
-  cancelledAt: Date;
-
-  @Column({ nullable: true })
-  cancellationReason: string;
-
-
-
-  @ManyToOne(() => Trip, (trip) => trip.bookings, { eager: false })
-  @JoinColumn({ name: 'tripId' })
-  trip: Trip;
 }

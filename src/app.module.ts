@@ -9,6 +9,7 @@ import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { TripsModule } from './trips/trips.module';
+import { BookingsModule } from './bookings/bookings.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 
@@ -32,7 +33,7 @@ import { UsersModule } from './users/users.module';
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_NAME'),
         autoLoadEntities: true,
-        synchronize: true,
+        synchronize: false,
       }),
     }),
     GraphQLModule.forRoot<ApolloDriverConfig>({
@@ -42,11 +43,7 @@ import { UsersModule } from './users/users.module';
     }),
     EventEmitterModule.forRoot(),
 
-    TripsModule,
-
-    AuthModule,
-
-    UsersModule,
+    TripsModule,BookingsModule,AuthModule,UsersModule
   ],
   controllers: [AppController],
   providers: [AppService],

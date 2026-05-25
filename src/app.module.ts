@@ -9,6 +9,8 @@ import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { TripsModule } from './trips/trips.module';
+import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
 
 
 
@@ -41,6 +43,10 @@ import { TripsModule } from './trips/trips.module';
     EventEmitterModule.forRoot(),
 
     TripsModule,
+
+    AuthModule,
+
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

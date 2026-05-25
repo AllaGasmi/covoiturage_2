@@ -5,11 +5,13 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
+  OneToMany,
   JoinColumn,
 } from 'typeorm';
-import { Driver } from '../../users/entities/driver.entity';
+import { User } from '../../users/entities/user.entity';
+import { Booking } from 'src/bookings/entities/booking.entity';
 
-@Entity()
+@Entity('trips')
 export class Trip {
   @PrimaryGeneratedColumn()
   id: number;
@@ -35,9 +37,9 @@ export class Trip {
   @Column()
   driverId: number;
 
-  @ManyToOne(() => Driver, (driver) => driver.trips, { eager: false })
+  @ManyToOne(() => User, (user) => user.trips, { eager: false })
   @JoinColumn({ name: 'driverId' })
-  driver: Driver;
+  driver: User;
 
   @Column({ nullable: true })
   description: string;
@@ -53,4 +55,8 @@ export class Trip {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  // Relations
+  @OneToMany(() => Booking, (booking) => booking.trip, { cascade: true })
+  bookings: Booking[];
 }

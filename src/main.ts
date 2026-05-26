@@ -10,7 +10,6 @@ async function bootstrap() {
   app.enableCors({ origin: true });
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
-  app.use('/front', express.static(join(__dirname, '..', 'frontend')));
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -22,7 +21,6 @@ async function bootstrap() {
   await app.listen(3000);
   console.log('API running on http://localhost:3000');
   console.log('GraphQL on http://localhost:3000/graphql');
-  console.log('Frontend on http://localhost:3000/front');
 }
 
 bootstrap();

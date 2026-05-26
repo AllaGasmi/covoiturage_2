@@ -6,7 +6,7 @@ import { Review } from './entities/review.entity';
 import { CreateReviewDto } from './dto/create-review.dto';
 import { Trip } from '../trips/entities/trip.entity';
 import { UpdateReviewDto } from './dto/update-review.dto';
-import { Trend } from './types/driver-analytics.type';
+import { Trend } from './graphql/driver-analytics.type';
 import { Badge } from './enums/badge.enum';
 import { TripsService } from 'src/trips/trips.service';
 import { ReviewTag } from './enums/review-tag.enum';
@@ -33,7 +33,7 @@ export class ReviewsService {
     if (trip.status !== 'completed') 
       throw new BadRequestException('Ce trajet ne peut pas encore être évalué');
 
-    if (body.passengerId === body.driverId)
+    if (body.passengerId === trip.driverId)
     throw new BadRequestException('Vous ne pouvez pas vous noter vous-même');
     
     const existing = await this.reviewRepo.findOne({
@@ -48,16 +48,17 @@ export class ReviewsService {
     const review = this.reviewRepo.create({
       rating: body.rating,
       comment: body.comment,
-      driver: { id: body.driverId } as any,
+      driver: { id: trip.driverId } as any,
       passenger: { id: body.passengerId } as any,
       trip: { id: body.tripId } as any,
+      tags: body.tags,
     });
 
     await this.reviewRepo.save(review);
 
-    const avg = await this.getDriverAverageRating(body.driverId);
+    const avg = await this.getDriverAverageRating(trip.driverId);
     this.eventEmitter.emit('review.submitted', {
-      driverId: body.driverId,
+      driverId: trip.driverId,
       averageRating: avg,
       newReview: {
         rating: review.rating,
@@ -66,7 +67,7 @@ export class ReviewsService {
         // pas de passengerId => anonymat respecté
       }});
 
-    await this.computeAndSaveBadges(body.driverId); 
+    await this.computeAndSaveBadges(trip.driverId); 
     return review;
   }
 

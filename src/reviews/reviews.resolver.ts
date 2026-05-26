@@ -1,9 +1,9 @@
 // ../reviews/reviews.resolver.ts
 import { Resolver, Query, Args, Int } from '@nestjs/graphql';
 import { ReviewsService } from './reviews.service';
-import { DriverStats } from './types/driver-stats.type';
+import { DriverStats } from './graphql/driver-stats.type';
 import { TripsService } from '../trips/trips.service';
-import { ReviewType } from './types/review.type';
+import { ReviewType } from './graphql/review.type';
 import { UseGuards } from '@nestjs/common';
 import { User } from 'src/users/entities/user.entity';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';

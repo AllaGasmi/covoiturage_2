@@ -36,6 +36,7 @@ export class TripType {
   @Field(() => Int)
   seatsBooked: number; 
 
+
   @Field()
   createdAt: Date;
 }

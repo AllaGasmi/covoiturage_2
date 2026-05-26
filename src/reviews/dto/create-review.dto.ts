@@ -2,8 +2,6 @@ import { IsInt, IsOptional, IsString, Min, Max, IsEnum, IsArray } from 'class-va
 import { ReviewTag } from '../enums/review-tag.enum';
 
 export class CreateReviewDto {
-  @IsInt()
-  driverId: number;
 
   @IsInt()
   tripId: number;

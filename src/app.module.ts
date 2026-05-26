@@ -50,7 +50,7 @@ import { LoggingMiddleware } from './common/middleware/logging.middleware';
     }),
     EventEmitterModule.forRoot(),
 
-    TripsModule,BookingsModule,AuthModule,UsersModule,MailModule,CommonModule
+    TripsModule,BookingsModule,AuthModule,UsersModule,MailModule,CommonModule, ReviewsModule
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -1,7 +1,9 @@
 import { Resolver, Query, Args, Int } from '@nestjs/graphql';
 import { TripsService } from './trips.service';
-import { TripType } from './trip.type';
-import { TripStatsType } from './trip-stats.type';
+import { TripType } from './graphql/trip.type';
+import { TripStatsType } from './graphql/trip-stats.type';
+import { PaginatedTripsType } from './graphql/paginated-trips.type';
+import { SearchTripsInput } from './graphql/search-trips.input';
 
 @Resolver(() => TripType)
 export class TripsResolver {
@@ -29,13 +31,14 @@ export class TripsResolver {
   }
 
 
-  @Query(() => [TripType])
-  searchTrips(
-    @Args('departure', { nullable: true }) departure?: string,
-    @Args('destination', { nullable: true }) destination?: string,
-  ) {
-    return this.tripsService.searchTrips(departure, destination);
-  }
+  @Query(() => PaginatedTripsType)
+    searchTrips(
+      @Args('filters', { type: () => SearchTripsInput, nullable: true })
+      filters?: SearchTripsInput,
+    ) {
+      return this.tripsService.searchTrips(filters ?? {});
+    }
+
 
 
   @Query(() => TripStatsType)
@@ -55,5 +58,14 @@ export class TripsResolver {
     @Args('limit', { type: () => Int, defaultValue: 5 }) limit: number,
   ) {
     return this.tripsService.getCheapestTrips(limit);
+  }
+
+
+  @Query(() => [TripType])
+  tripsNearDate(
+    @Args('date') date: string,
+    @Args('rangeDays', { type: () => Int }) rangeDays: number,
+  ) {
+    return this.tripsService.tripsNearDate(date, rangeDays);
   }
 }

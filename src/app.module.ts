@@ -16,6 +16,8 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { MailModule } from './mail/mail.module';
 import { CommonModule } from './common/common.module';
+import { PubSubModule } from './common/pubsub/pubsub.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { LoggingMiddleware } from './common/middleware/logging.middleware';
 
 
@@ -45,11 +47,22 @@ import { LoggingMiddleware } from './common/middleware/logging.middleware';
       driver: ApolloDriver,
       autoSchemaFile: true,
       playground: true,
-      context: ({ req }) => ({ req }),
+      subscriptions: {
+        'graphql-ws': {
+          path: '/graphql',
+        },
+      },
+      context: ({ req, res }) => ({ req, res }),
     }),
     EventEmitterModule.forRoot(),
-
-    TripsModule,BookingsModule,AuthModule,UsersModule,MailModule,CommonModule
+    TripsModule,
+    BookingsModule,
+    AuthModule,
+    UsersModule,
+    MailModule,
+    CommonModule,
+    PubSubModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

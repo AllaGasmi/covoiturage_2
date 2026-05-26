@@ -6,6 +6,8 @@ import { PaginatedTripsType } from './graphql/paginated-trips.type';
 import { SearchTripsInput } from './graphql/search-trips.input';
 import { GqlJwtAuthGuard } from 'src/auth/guards/gql-jwt-auth.guard';
 import { UseGuards } from '@nestjs/common';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { User } from 'src/users/entities/user.entity';
 
 @Resolver(() => TripType)
 export class TripsResolver {
@@ -13,14 +15,12 @@ export class TripsResolver {
 
 
   @Query(() => TripType)
-  @UseGuards(GqlJwtAuthGuard)
   trip(@Args('id', { type: () => Int }) id: number) {
     return this.tripsService.getTripById(id);
   }
 
 
   @Query(() => [TripType])
-  @UseGuards(GqlJwtAuthGuard)
   upcomingTrips(
     @Args('page', { type: () => Int, defaultValue: 1 }) page: number,
     @Args('limit', { type: () => Int, defaultValue: 10 }) limit: number,
@@ -47,9 +47,8 @@ export class TripsResolver {
 
   @Query(() => TripStatsType)
   @UseGuards(GqlJwtAuthGuard)
-  tripsStats() {
-    const driverId = 1;
-    return this.tripsService.getTripsStats(driverId);
+  tripsStats(@CurrentUser() user: User) {
+    return this.tripsService.getTripsStats(user.id);
   }
 
 

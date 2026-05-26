@@ -209,6 +209,26 @@ export class ReviewsService {
     const totalReviews = reviews.length;
     const totalTrips = await this.tripsService.countCompletedTripsByDriver(driverId);
 
+    // fetch all drivers' stats for percentile comparison
+    const allTripCounts = await this.tripsService.getAllDriversTripCounts();
+    const allReviewCounts = await this.reviewRepo
+      .createQueryBuilder('review')
+      .select('review.driverId', 'driverId')
+      .addSelect('COUNT(*)', 'count')
+      .groupBy('review.driverId')
+      .getRawMany();
+
+    const percentileRank = (value: number, allValues: number[]): number => {
+      const below = allValues.filter(v => v < value).length;
+      return (below / allValues.length) * 100;
+    };
+
+    const tripCounts = allTripCounts.map(d => d.count);
+    const reviewCounts = allReviewCounts.map(d => parseInt(d.count));
+
+    const tripPercentile = percentileRank(totalTrips, tripCounts);
+    const reviewPercentile = percentileRank(totalReviews, reviewCounts);
+
     const tagRate = (tag: string) => {
       const count = reviews.filter(r => r.tags?.includes(tag as ReviewTag)).length;
       return (count / totalReviews) * 100;
@@ -216,25 +236,20 @@ export class ReviewsService {
 
     const earned: Badge[] = [];
     if (avg > 4.8) earned.push(Badge.EXCELLENT_DRIVER);
-    if (tagRate('CLEAN_CAR') >= 1) earned.push(Badge.CLEAN_CAR);
-    if (tagRate('PUNCTUAL') >= 1) earned.push(Badge.ALWAYS_ON_TIME);
-    if (totalTrips >= 100 && avg > 4.5) earned.push(Badge.SAFE_DRIVER);
+    if (tagRate('CLEAN_CAR') >= 5) earned.push(Badge.CLEAN_CAR);
+    if (tagRate('PUNCTUAL') >= 5) earned.push(Badge.ALWAYS_ON_TIME);
+    if (tripPercentile >= 75 && avg > 4.5) earned.push(Badge.SAFE_DRIVER);   // top 25% trips
     if (tagRate('FRIENDLY') >= 80) earned.push(Badge.FRIENDLY);
-    if (totalReviews >= 50) earned.push(Badge.POPULAR);
+    if (reviewPercentile >= 80) earned.push(Badge.POPULAR);                   // top 20% reviews
 
-    // find already unlocked badges
     const existing = await this.badgeRepo.find({ where: { driverId } });
     const existingBadges = existing.map(b => b.badge);
-
-    // only save new ones
     const newBadges = earned.filter(b => !existingBadges.includes(b));
 
     if (newBadges.length) {
       await this.badgeRepo.save(
         newBadges.map(badge => this.badgeRepo.create({ driverId, badge }))
       );
-
-      // emit only for truly new badges
       this.eventEmitter.emit('badge.unlocked', { driverId, badges: newBadges });
     }
 

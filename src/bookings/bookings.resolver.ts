@@ -9,6 +9,7 @@ import { Trip } from '../trips/entities/trip.entity';
 import { GqlAuthGuard } from 'src/auth/guards/gql-auth.guard';
 import { UseGuards } from '@nestjs/common';
 
+@UseGuards(GqlAuthGuard)
 @Resolver(() => BookingWithTripType)
 export class BookingsResolver {
   constructor(
@@ -17,7 +18,6 @@ export class BookingsResolver {
     private readonly tripRepo: Repository<Trip>,
   ) {}
 
-  @UseGuards(GqlAuthGuard)
   @Query(() => [BookingWithTripType])
   myBookings(@Context() context: any) {
     const passengerId = context.req.user.id;

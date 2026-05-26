@@ -319,4 +319,16 @@ export class TripsService {
 
     return result.map(r => ({ driverId: r.driverId, count: parseInt(r.count) }));
   }
+
+  async getAllDriversTripCounts(): Promise<{ driverId: number; count: number }[]> {
+  const result = await this.tripRepo
+    .createQueryBuilder('trip')
+    .select('trip.driverId', 'driverId')
+    .addSelect('COUNT(*)', 'count')
+    .where('trip.status = :status', { status: 'completed' })
+    .groupBy('trip.driverId')
+    .getRawMany();
+
+  return result.map(r => ({ driverId: r.driverId, count: parseInt(r.count) }));
+}
 }

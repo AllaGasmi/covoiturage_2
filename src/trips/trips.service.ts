@@ -121,31 +121,8 @@ export class TripsService {
     this.eventEmitter.emit('trip.completed', { tripId, driverId, passengerIds });
 
     return updated;
-}
-
-  async getTripsByDateRange(from: string, to: string) {
-    return this.tripRepo
-      .createQueryBuilder('trip')
-      .where('trip.status = :status', { status: 'active' })
-      .andWhere('trip.date BETWEEN :from AND :to', {
-        from: new Date(from),
-        to: new Date(to),
-      })
-      .orderBy('trip.date', 'ASC')
-      .getMany();
   }
 
-
-  async getCheapestTrips(limit = 5) {
-    return this.tripRepo.find({
-      where: {
-        status: 'active',
-        date: MoreThanOrEqual(new Date()),
-      },
-      order: { price: 'ASC' },
-      take: limit,
-    });
-  }
 
    async searchTrips(filters: SearchTripsInput): Promise<PaginatedTripsType> {
     const {
@@ -264,7 +241,6 @@ export class TripsService {
       },
     };
   }
-
 
 
   async getTripsStats(driverId: number) {

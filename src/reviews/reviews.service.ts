@@ -239,8 +239,8 @@ export class ReviewsService {
     if (tagRate('CLEAN_CAR') >= 5) earned.push(Badge.CLEAN_CAR);
     if (tagRate('PUNCTUAL') >= 5) earned.push(Badge.ALWAYS_ON_TIME);
     if (tripPercentile >= 75 && avg > 4.5) earned.push(Badge.SAFE_DRIVER);   // top 25% trips
-    if (tagRate('FRIENDLY') >= 80) earned.push(Badge.FRIENDLY);
-    if (reviewPercentile >= 80) earned.push(Badge.POPULAR);                   // top 20% reviews
+    if (tagRate('FRIENDLY') >= 5) earned.push(Badge.FRIENDLY);
+    if (reviewPercentile >= 5) earned.push(Badge.POPULAR);                   // top 20% reviews
 
     const existing = await this.badgeRepo.find({ where: { driverId } });
     const existingBadges = existing.map(b => b.badge);

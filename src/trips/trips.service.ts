@@ -22,7 +22,7 @@ export class TripsService {
     @InjectRepository(Booking)
     private bookingRepo: Repository<Booking>,
     private eventEmitter: EventEmitter2,
-  ) {}
+  ) { }
 
   async createTrip(driverId: number, dto: CreateTripDto) {
     const trip = this.tripRepo.create({
@@ -124,7 +124,7 @@ export class TripsService {
   }
 
 
-   async searchTrips(filters: SearchTripsInput): Promise<PaginatedTripsType> {
+  async searchTrips(filters: SearchTripsInput): Promise<PaginatedTripsType> {
     const {
       departure,
       destination,
@@ -303,8 +303,20 @@ export class TripsService {
   }
 
   async countCompletedTripsByDriver(driverId: number): Promise<number> {
-  return this.tripRepo.count({
-    where: { driverId, status: 'completed' },
-  });
+    return this.tripRepo.count({
+      where: { driverId, status: 'completed' },
+    });
+  }
+
+  async getAllDriversTripCounts(): Promise<{ driverId: number; count: number }[]> {
+    const result = await this.tripRepo
+      .createQueryBuilder('trip')
+      .select('trip.driverId', 'driverId')
+      .addSelect('COUNT(*)', 'count')
+      .where('trip.status = :status', { status: 'completed' })
+      .groupBy('trip.driverId')
+      .getRawMany();
+
+    return result.map(r => ({ driverId: r.driverId, count: parseInt(r.count) }));
   }
 }

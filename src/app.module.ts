@@ -39,7 +39,7 @@ import { LoggingMiddleware } from './common/middleware/logging.middleware';
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_NAME'),
         autoLoadEntities: true,
-        synchronize: true,
+        synchronize: false,
       }),
     }),
     GraphQLModule.forRoot<ApolloDriverConfig>({

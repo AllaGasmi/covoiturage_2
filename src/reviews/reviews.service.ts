@@ -61,9 +61,11 @@ export class ReviewsService {
       driverId: trip.driverId,
       averageRating: avg,
       newReview: {
+        id: review.id, 
         rating: review.rating,
         comment: review.comment,
         createdAt: review.createdAt,
+        tags: review.tags,
         // pas de passengerId => anonymat respecté
       }});
 
@@ -71,7 +73,7 @@ export class ReviewsService {
     return review;
   }
 
-  async updateReview(id: number, dto: UpdateReviewDto, userId: number) {
+  async updateReview(id: number, body: UpdateReviewDto, userId: number) {
     const review = await this.reviewRepo.findOne({ where: { id } });
     if (!review) throw new NotFoundException('Avis introuvable');
 
@@ -80,41 +82,75 @@ export class ReviewsService {
     }
 
     Object.assign(review, {
-      ...(dto.rating && { rating: dto.rating }),
-      ...(dto.comment && { comment: dto.comment }),
-      ...(dto.tags && { tags: dto.tags })
+      ...(body.rating && { rating: body.rating }),
+      ...(body.comment && { comment: body.comment }),
+      ...(body.tags && { tags: body.tags })
     });
+    const updated = await this.reviewRepo.save(review);
+    const trip = await this.reviewRepo.findOne({ where: { id }, relations: ['trip'] }).then(r => r?.trip);
 
-    return this.reviewRepo.save(review);
+    if (!trip) throw new NotFoundException('Trajet introuvable');
+    
+    
+    await this.computeAndSaveBadges(review.driverId);
+    const avg = await this.getDriverAverageRating(trip.driverId);
+    this.eventEmitter.emit('review.updated', {
+      driverId: trip.driverId,
+      averageRating: avg,
+      updatedReview: {
+        id: updated.id, 
+        rating: updated.rating,
+        comment: updated.comment,
+        createdAt: updated.createdAt,
+        tags: updated.tags,
+        // pas de passengerId => anonymat respecté
+      }});
+
+    return updated;
   }
 
 
 
   async deleteReview(id: number, userId: number) {
-    const review = await this.reviewRepo.findOne({ where: { id } });
+    const review = await this.reviewRepo.findOne({
+      where: { id },
+      relations: ['trip'], 
+    });
     if (!review) throw new NotFoundException('Avis introuvable');
-    if (review.passengerId !== userId) {
+    if (review.passengerId !== userId)
       throw new ForbiddenException('Vous ne pouvez supprimer que vos propres avis');
-    }
-    await this.reviewRepo.remove(review);
+
+    const driverId = review.driverId;
+
+    await this.reviewRepo.remove(review); 
+
+    await this.computeAndSaveBadges(driverId);
+    const avg = await this.getDriverAverageRating(driverId);
+    this.eventEmitter.emit('review.deleted', {
+      driverId,
+      averageRating: avg,
+      deletedReview: { id, rating: review.rating, comment: review.comment, createdAt: review.createdAt, tags: review.tags },
+    });
+
     return { message: 'Avis supprimé' };
   }
 
   async getDriverReviews(driverId: number) {
-  return this.reviewRepo.find({
-    where: { driver: { id: driverId } },
-    relations: ['passenger', 'trip'],
-    order: { createdAt: 'DESC' },
-  });
-}
-
-  async getDriverReviewsAdmin(driverId: number) {
     return this.reviewRepo.find({
       where: { driver: { id: driverId } },
-      
+      relations: ['passenger', 'trip'],
       order: { createdAt: 'DESC' },
     });
   }
+
+  async getPassengerReviews(passengerId: number) {
+    return this.reviewRepo.find({
+      where: { passenger: { id: passengerId } },
+      relations: ['trip', 'driver'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+ 
 
   async getTripReviews(tripId: number) {
     return this.reviewRepo.find({
@@ -209,26 +245,6 @@ export class ReviewsService {
     const totalReviews = reviews.length;
     const totalTrips = await this.tripsService.countCompletedTripsByDriver(driverId);
 
-    // fetch all drivers' stats for percentile comparison
-    const allTripCounts = await this.tripsService.getAllDriversTripCounts();
-    const allReviewCounts = await this.reviewRepo
-      .createQueryBuilder('review')
-      .select('review.driverId', 'driverId')
-      .addSelect('COUNT(*)', 'count')
-      .groupBy('review.driverId')
-      .getRawMany();
-
-    const percentileRank = (value: number, allValues: number[]): number => {
-      const below = allValues.filter(v => v < value).length;
-      return (below / allValues.length) * 100;
-    };
-
-    const tripCounts = allTripCounts.map(d => d.count);
-    const reviewCounts = allReviewCounts.map(d => parseInt(d.count));
-
-    const tripPercentile = percentileRank(totalTrips, tripCounts);
-    const reviewPercentile = percentileRank(totalReviews, reviewCounts);
-
     const tagRate = (tag: string) => {
       const count = reviews.filter(r => r.tags?.includes(tag as ReviewTag)).length;
       return (count / totalReviews) * 100;
@@ -236,20 +252,25 @@ export class ReviewsService {
 
     const earned: Badge[] = [];
     if (avg > 4.8) earned.push(Badge.EXCELLENT_DRIVER);
-    if (tagRate('CLEAN_CAR') >= 5) earned.push(Badge.CLEAN_CAR);
-    if (tagRate('PUNCTUAL') >= 5) earned.push(Badge.ALWAYS_ON_TIME);
-    if (tripPercentile >= 75 && avg > 4.5) earned.push(Badge.SAFE_DRIVER);   // top 25% trips
-    if (tagRate('FRIENDLY') >= 5) earned.push(Badge.FRIENDLY);
-    if (reviewPercentile >= 5) earned.push(Badge.POPULAR);                   // top 20% reviews
+    if (tagRate('CLEAN_CAR') >= 80) earned.push(Badge.CLEAN_CAR);
+    if (tagRate('PUNCTUAL') >= 80) earned.push(Badge.ALWAYS_ON_TIME);
+    if (totalTrips >= 100 && avg > 4.5) earned.push(Badge.SAFE_DRIVER);
+    if (tagRate('FRIENDLY') >= 80) earned.push(Badge.FRIENDLY);
+    if (totalReviews >= 50) earned.push(Badge.POPULAR);
 
+    // find already unlocked badges
     const existing = await this.badgeRepo.find({ where: { driverId } });
     const existingBadges = existing.map(b => b.badge);
+
+    // only save new ones
     const newBadges = earned.filter(b => !existingBadges.includes(b));
 
     if (newBadges.length) {
       await this.badgeRepo.save(
         newBadges.map(badge => this.badgeRepo.create({ driverId, badge }))
       );
+
+      // emit only for truly new badges
       this.eventEmitter.emit('badge.unlocked', { driverId, badges: newBadges });
     }
 

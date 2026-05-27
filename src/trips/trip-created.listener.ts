@@ -8,7 +8,7 @@ import { Trip } from './entities/trip.entity';
 
 export const SHARED_PUBSUB = 'SHARED_PUBSUB';
 
-const TOPIC_TRIP_MATCHED_ALERT = 'tripMatchedAlert';
+export const TOPIC_TRIP_MATCHED_ALERT = 'tripMatchedAlert';
 
 @Injectable()
 export class TripCreatedListener {

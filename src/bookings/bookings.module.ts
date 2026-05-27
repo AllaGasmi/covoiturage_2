@@ -9,7 +9,7 @@ import { TripCancelledListener } from './trip-cancelled.listener';
 import { User } from 'src/users/entities/user.entity';
 import { BookingStreamService } from './booking-stream.service';
 import { BookingListener } from './booking.listener';
-import { BookingSseController } from './booking-sse.controller';
+import { TripUpdatedListener } from './trip-updated';
 
 @Module({
   imports: [
@@ -20,9 +20,9 @@ import { BookingSseController } from './booking-sse.controller';
     BookingsResolver,
     TripCancelledListener,
     BookingStreamService,
-    BookingListener,
+    BookingListener,TripUpdatedListener
   ],
-  controllers: [BookingsController, BookingSseController],
+  controllers: [BookingsController],
   exports: [BookingsService],
 })
 export class BookingsModule {}

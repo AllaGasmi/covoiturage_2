@@ -7,7 +7,13 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  app.enableCors({ origin: true });
+  app.enableCors({
+    origin: true,
+    credentials: true,
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Accept', 'Authorization', 'Cache-Control', 'X-Requested-With'],
+    exposedHeaders: ['Content-Type', 'Authorization', 'X-Accel-Buffering'],
+  });
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 

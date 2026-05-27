@@ -9,6 +9,7 @@
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
+    "start:front": "node frontend/server.js",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
@@ -22,7 +23,6 @@
   "dependencies": {
     "@apollo/server": "^5.5.1",
     "@as-integrations/express5": "^1.1.2",
-    "@graphql-tools/schema": "^10.0.33",
     "@nestjs/apollo": "^13.4.2",
     "@nestjs/common": "^11.1.19",
     "@nestjs/config": "^4.0.4",
@@ -35,6 +35,7 @@
     "@nestjs/platform-express": "^11.1.19",
     "@nestjs/typeorm": "^11.0.1",
     "@types/nodemailer": "^8.0.0",
+    "@vitejs/plugin-react": "^4.7.0",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
@@ -42,7 +43,6 @@
     "express": "^5.2.1",
     "graphql": "^16.9.0",
     "graphql-subscriptions": "^3.0.0",
-    "graphql-ws": "^6.0.8",
     "mysql2": "^3.22.3",
     "nodemailer": "^8.0.8",
     "passport": "^0.7.0",
@@ -50,7 +50,7 @@
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "typeorm": "^0.3.29",
-    "ws": "^8.21.0"
+    "vite": "^6.4.2"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",

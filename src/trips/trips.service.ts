@@ -5,23 +5,24 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, MoreThanOrEqual } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Trip } from './entities/trip.entity';
 import { CreateTripDto } from './dto/create-trip.dto';
 import { UpdateTripDto } from './dto/update-trip.dto';
 import { SearchTripsInput, TripSortBy } from './graphql/search-trips.input';
 import { PaginatedTripsType } from './graphql/paginated-trips.type';
+import { Booking } from 'src/bookings/entities/booking.entity';
 
 @Injectable()
 export class TripsService {
   constructor(
     @InjectRepository(Trip)
     private tripRepo: Repository<Trip>,
+    @InjectRepository(Booking)
+    private bookingRepo: Repository<Booking>,
     private eventEmitter: EventEmitter2,
   ) { }
-
-  // MUTATIONS
 
   async createTrip(driverId: number, dto: CreateTripDto) {
     const trip = this.tripRepo.create({
@@ -55,7 +56,9 @@ export class TripsService {
       ...(dto.price !== undefined && { price: dto.price }),
     });
 
-    return this.tripRepo.save(trip);
+  const updated = await this.tripRepo.save(trip);
+  this.eventEmitter.emit('trip.updated', { tripId: trip.id, changes: dto });
+  return updated;
   }
 
   async cancelTrip(tripId: number, driverId: number, reason?: string) {
@@ -78,17 +81,6 @@ export class TripsService {
     return updated;
   }
 
-  async completeTrip(tripId: number) {
-    const trip = await this.tripRepo.findOne({ where: { id: tripId } });
-    if (!trip) throw new NotFoundException('Trajet introuvable');
-    trip.status = 'completed';
-    const updated = await this.tripRepo.save(trip);
-    this.eventEmitter.emit('trip.completed', { tripId });
-    return updated;
-  }
-
-  // SIMPLE QUERIES
-
   async getMyTrips(driverId: number) {
     return this.tripRepo.find({
       where: { driverId },
@@ -102,26 +94,42 @@ export class TripsService {
     return trip;
   }
 
-  async getTripsByStatus(status: string) {
-    return this.tripRepo.find({
-      where: { status },
+  async getUpcomingTrips(page = 1, limit = 10) {
+    const [trips, total] = await this.tripRepo.findAndCount({
+      where: {
+        status: 'active',
+        date: MoreThanOrEqual(new Date()),
+      },
       order: { date: 'ASC' },
+      skip: (page - 1) * limit,
+      take: limit,
     });
+    return trips;
   }
 
-  async getTripsStats(driverId: number) {
-    const trips = await this.tripRepo.find({ where: { driverId } });
+  async completeTrip(tripId: number, driverId: number) {
+    const trip = await this.tripRepo.findOne({ where: { id: tripId } });
+    if (!trip) throw new NotFoundException('Trajet introuvable');
+    if (trip.driverId !== driverId) throw new ForbiddenException('Vous n\'êtes pas le conducteur de ce trajet');
 
-    return {
-      totalTrips: trips.length,
-      activeTrips: trips.filter((t) => t.status === 'active').length,
-      completedTrips: trips.filter((t) => t.status === 'completed').length,
-      cancelledTrips: trips.filter((t) => t.status === 'cancelled').length,
-      totalSeats: trips.reduce((sum, t) => sum + t.seats, 0),
-    };
+    const bookings = await this.bookingRepo.find({
+      where: { tripId, status: 'confirmed' },
+    });
+    const passengerIds = bookings.map(b => b.passengerId);
+
+    trip.status = 'completed';
+    const updated = await this.tripRepo.save(trip);
+
+    this.eventEmitter.emit('trip.completed', { tripId: trip.id,
+      driverId: trip.driverId,
+      passengerIds,
+      departure: trip.departure,       // ← ajouté car sta3mltou pour le module de reviews
+      destination: trip.destination,   // ← ajouté 
+    });
+
+    return updated;
   }
 
-  // ADVANCED QUERIES
 
   async searchTrips(filters: SearchTripsInput): Promise<PaginatedTripsType> {
     const {
@@ -241,6 +249,26 @@ export class TripsService {
     };
   }
 
+
+  async getTripsStats(driverId: number) {
+    const trips = await this.tripRepo.find({ where: { driverId } });
+
+    return {
+      totalTrips: trips.length,
+      activeTrips: trips.filter((t) => t.status === 'active').length,
+      completedTrips: trips.filter((t) => t.status === 'completed').length,
+      cancelledTrips: trips.filter((t) => t.status === 'cancelled').length,
+      totalSeats: trips.reduce((sum, t) => sum + t.seats, 0),
+    };
+  }
+
+  async getTripsByStatus(status: string) {
+    return this.tripRepo.find({
+      where: { status },
+      order: { date: 'ASC' },
+    });
+  }
+
   async tripsNearDate(date: string, rangeDays: number) {
     const center = new Date(date);
     const from = new Date(center);
@@ -256,6 +284,7 @@ export class TripsService {
       .orderBy('trip.date', 'ASC')
       .getMany();
   }
+
 
   // CURSOR HELPERS
 
@@ -279,4 +308,23 @@ export class TripsService {
       throw new BadRequestException('Invalid cursor');
     }
   }
+
+  async countCompletedTripsByDriver(driverId: number): Promise<number> {
+    return this.tripRepo.count({
+      where: { driverId, status: 'completed' },
+    });
+  }
+
+  async getAllDriversTripCounts(): Promise<{ driverId: number; count: number }[]> {
+    const result = await this.tripRepo
+      .createQueryBuilder('trip')
+      .select('trip.driverId', 'driverId')
+      .addSelect('COUNT(*)', 'count')
+      .where('trip.status = :status', { status: 'completed' })
+      .groupBy('trip.driverId')
+      .getRawMany();
+
+    return result.map(r => ({ driverId: r.driverId, count: parseInt(r.count) }));
+  }
+
 }

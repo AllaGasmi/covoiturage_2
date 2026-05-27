@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { PubSub } from 'graphql-subscriptions';
 import { Trip } from './entities/trip.entity';
 import { User } from 'src/users/entities/user.entity';
 import { PassengerAlert } from './entities/passenger-alert.entity';
@@ -9,6 +10,7 @@ import { TripsController } from './trips.controller';
 import { TripsResolver } from './trips.resolvers';
 import { DriverLoader } from './driver.loader';
 import { TripCreatedListener } from './trip-created.listener';
+import { SHARED_PUBSUB } from './trip-created.listener';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Trip, User, PassengerAlert, Booking])],
@@ -18,6 +20,10 @@ import { TripCreatedListener } from './trip-created.listener';
     TripsResolver,
     DriverLoader,
     TripCreatedListener,
+    {
+      provide: SHARED_PUBSUB,
+      useValue: new PubSub(),
+    },
   ],
   exports: [TripsService],
 })

@@ -11,13 +11,12 @@ import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { TripsModule } from './trips/trips.module';
-import { BookingsModule } from './bookings/bookings.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
+import { ReviewsModule } from './reviews/reviews.module';
+import { BookingsModule } from './bookings/bookings.module';
 import { MailModule } from './mail/mail.module';
 import { CommonModule } from './common/common.module';
-import { PubSubModule } from './common/pubsub/pubsub.module';
-import { NotificationsModule } from './notifications/notifications.module';
 import { LoggingMiddleware } from './common/middleware/logging.middleware';
 
 
@@ -36,13 +35,14 @@ import { LoggingMiddleware } from './common/middleware/logging.middleware';
         type: 'mysql',
         host: configService.get<string>('DB_HOST'),
         port: configService.get<number>('DB_PORT'),
-        username: configService.get<string>('DB_USER'),
+        username: configService.get<string>('DB_USERNAME'),
         password: configService.get<string>('DB_PASSWORD'),
-        database: configService.get<string>('DB_NAME'),
+        database: configService.get<string>('DB_DATABASE'),
         autoLoadEntities: true,
         synchronize: true,
       }),
     }),
+    
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
       autoSchemaFile: true,
@@ -63,7 +63,7 @@ import { LoggingMiddleware } from './common/middleware/logging.middleware';
     CommonModule,
     PubSubModule,
     NotificationsModule,
-  ],
+  ]
   controllers: [AppController],
   providers: [AppService],
 })

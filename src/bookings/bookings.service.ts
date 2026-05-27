@@ -5,6 +5,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Booking } from './entities/booking.entity';
 import { Trip } from '../trips/entities/trip.entity';
 import { User } from 'src/users/entities/user.entity';
+import { BookingRequestCreatedEvent } from './booking-stream.service';
 
 @Injectable()
 export class BookingsService {
@@ -52,6 +53,12 @@ export class BookingsService {
 
       await queryRunner.manager.increment(Trip, { id: tripId }, 'seatsBooked', 1);
       await queryRunner.commitTransaction();
+
+      const bookingCreatedEvent: BookingRequestCreatedEvent = {
+        booking: saved,
+        driverId: trip.driverId,
+      };
+      this.eventEmitter.emit('booking.request.created', bookingCreatedEvent);
 
       return saved;
 

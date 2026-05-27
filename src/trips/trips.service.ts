@@ -22,17 +22,29 @@ export class TripsService {
     @InjectRepository(Booking)
     private bookingRepo: Repository<Booking>,
     private eventEmitter: EventEmitter2,
-  ) { }
+  ) {}
 
   async createTrip(driverId: number, dto: CreateTripDto) {
+    const tripDate = new Date(dto.date);
+
+    if (tripDate.getTime() <= Date.now()) {
+      throw new BadRequestException(
+        'La date de départ doit être dans le futur',
+      );
+    }
+
     const trip = this.tripRepo.create({
       ...dto,
-      date: new Date(dto.date),
+      date: tripDate,
       driverId,
     });
+
     const saved = await this.tripRepo.save(trip);
 
-    this.eventEmitter.emit('trip.created', { tripId: saved.id, trip: saved });
+    this.eventEmitter.emit('trip.created', {
+      tripId: saved.id,
+      trip: saved,
+    });
 
     return saved;
   }
@@ -47,6 +59,10 @@ export class TripsService {
       throw new BadRequestException('Trajet annulé ou terminé');
     if (new Date(trip.date) <= new Date())
       throw new BadRequestException('Trajet déjà parti');
+    if (dto.seats !== undefined && dto.seats < trip.seatsBooked)
+      throw new BadRequestException(
+        `Impossible : ${trip.seatsBooked} place(s) déjà réservée(s)`,
+      );
 
     Object.assign(trip, {
       ...(dto.departure && { departure: dto.departure }),
@@ -54,11 +70,18 @@ export class TripsService {
       ...(dto.date && { date: new Date(dto.date) }),
       ...(dto.seats !== undefined && { seats: dto.seats }),
       ...(dto.price !== undefined && { price: dto.price }),
+      ...(dto.description && { description: dto.description }),
     });
 
-  const updated = await this.tripRepo.save(trip);
-  this.eventEmitter.emit('trip.updated', { tripId: trip.id, changes: dto });
-  return updated;
+    const updated = await this.tripRepo.save(trip);
+
+    this.eventEmitter.emit('trip.updated', {
+      tripId: trip.id,
+      driverId: trip.driverId,
+      changes: dto,
+    });
+
+    return updated;
   }
 
   async cancelTrip(tripId: number, driverId: number, reason?: string) {
@@ -110,26 +133,29 @@ export class TripsService {
   async completeTrip(tripId: number, driverId: number) {
     const trip = await this.tripRepo.findOne({ where: { id: tripId } });
     if (!trip) throw new NotFoundException('Trajet introuvable');
-    if (trip.driverId !== driverId) throw new ForbiddenException('Vous n\'êtes pas le conducteur de ce trajet');
+    if (trip.driverId !== driverId)
+      throw new ForbiddenException(
+        "Vous n'êtes pas le conducteur de ce trajet",
+      );
 
     const bookings = await this.bookingRepo.find({
       where: { tripId, status: 'confirmed' },
     });
-    const passengerIds = bookings.map(b => b.passengerId);
+    const passengerIds = bookings.map((b) => b.passengerId);
 
     trip.status = 'completed';
     const updated = await this.tripRepo.save(trip);
 
-    this.eventEmitter.emit('trip.completed', { tripId: trip.id,
+    this.eventEmitter.emit('trip.completed', {
+      tripId: trip.id,
       driverId: trip.driverId,
       passengerIds,
-      departure: trip.departure,       // ← ajouté car sta3mltou pour le module de reviews
-      destination: trip.destination,   // ← ajouté 
+      departure: trip.departure, // ← ajouté car sta3mltou pour le module de reviews
+      destination: trip.destination, // ← ajouté
     });
 
     return updated;
   }
-
 
   async searchTrips(filters: SearchTripsInput): Promise<PaginatedTripsType> {
     const {
@@ -183,7 +209,6 @@ export class TripsService {
       qb.andWhere('trip.price <= :maxPrice', { maxPrice });
     }
 
-
     // Cursor pagination setup
     let afterSortValue: any = undefined;
     let afterId: number | undefined = undefined;
@@ -210,15 +235,21 @@ export class TripsService {
     if (after) {
       const sortOperator = sortOrder === 'ASC' ? '>' : '<';
       if (sortBy === TripSortBy.DRIVER_RATING) {
-        qb.andWhere(`(
+        qb.andWhere(
+          `(
           (driver.rating ${sortOperator} :afterSortValue)
           OR (driver.rating = :afterSortValue AND trip.id > :afterId)
-        )`, { afterSortValue, afterId });
+        )`,
+          { afterSortValue, afterId },
+        );
       } else {
-        qb.andWhere(`(
+        qb.andWhere(
+          `(
           (trip.${sortBy} ${sortOperator} :afterSortValue)
           OR (trip.${sortBy} = :afterSortValue AND trip.id > :afterId)
-        )`, { afterSortValue, afterId });
+        )`,
+          { afterSortValue, afterId },
+        );
       }
     }
 
@@ -244,11 +275,11 @@ export class TripsService {
       edges,
       pageInfo: {
         hasNextPage,
-        endCursor: edges.length > 0 ? edges[edges.length - 1].cursor : undefined,
+        endCursor:
+          edges.length > 0 ? edges[edges.length - 1].cursor : undefined,
       },
     };
   }
-
 
   async getTripsStats(driverId: number) {
     const trips = await this.tripRepo.find({ where: { driverId } });
@@ -285,7 +316,6 @@ export class TripsService {
       .getMany();
   }
 
-
   // CURSOR HELPERS
 
   private encodeCursor(payload: { v: any; id: number }): string {
@@ -315,7 +345,9 @@ export class TripsService {
     });
   }
 
-  async getAllDriversTripCounts(): Promise<{ driverId: number; count: number }[]> {
+  async getAllDriversTripCounts(): Promise<
+    { driverId: number; count: number }[]
+  > {
     const result = await this.tripRepo
       .createQueryBuilder('trip')
       .select('trip.driverId', 'driverId')
@@ -324,7 +356,9 @@ export class TripsService {
       .groupBy('trip.driverId')
       .getRawMany();
 
-    return result.map(r => ({ driverId: r.driverId, count: parseInt(r.count) }));
+    return result.map((r) => ({
+      driverId: r.driverId,
+      count: parseInt(r.count),
+    }));
   }
-
 }

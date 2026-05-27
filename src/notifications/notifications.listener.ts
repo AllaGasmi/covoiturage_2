@@ -8,6 +8,7 @@ export const TOPIC_BOOKING_CANCELED = 'bookingCanceled';
 export const TOPIC_BOOKING_REJECTED = 'bookingRejected';
 //already done 
 export const TOPIC_TRIP_CANCELLED = 'tripCancelled';
+export const TOPIC_TRIP_UPDATED = 'tripUpdated';
 
 @Injectable()
 export class NotificationsListener {
@@ -35,6 +36,14 @@ export class NotificationsListener {
     this.logger.log(`Trip #${payload.tripId} cancelled → pushing subscription`);
     await this.pubSub.publish(TOPIC_TRIP_CANCELLED, {
       tripCancelled: payload,
+    });
+  }
+
+  @OnEvent('trip.updated')
+  async handleTripUpdated(payload: { tripId: number; reason: string }) {
+    this.logger.log(`Trip #${payload.tripId} updated → pushing subscription`);
+    await this.pubSub.publish(TOPIC_TRIP_UPDATED, {
+      tripUpdated: payload,
     });
   }
 }

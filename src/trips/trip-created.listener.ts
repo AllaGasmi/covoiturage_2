@@ -5,7 +5,8 @@ import { Repository } from 'typeorm';
 import { PubSub } from 'graphql-subscriptions';
 import { PassengerAlert } from './entities/passenger-alert.entity';
 import { Trip } from './entities/trip.entity';
-import { SHARED_PUBSUB } from '../common/pubsub/pubsub.module';
+
+export const SHARED_PUBSUB = 'SHARED_PUBSUB';
 
 export const TOPIC_TRIP_MATCHED_ALERT = 'tripMatchedAlert';
 

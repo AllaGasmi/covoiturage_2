@@ -35,3 +35,12 @@ export class TripCancelledPayload {
   @Field()
   reason: string;
 }
+
+@ObjectType()
+export class TripUpdatedPayload {
+  @Field(() => Int)
+  tripId: number;
+
+  @Field()
+  reason: string;
+}

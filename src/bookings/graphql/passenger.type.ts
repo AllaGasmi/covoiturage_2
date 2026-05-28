@@ -1,13 +1,16 @@
 import { ObjectType, Field, Int, Float } from '@nestjs/graphql';
 
 @ObjectType()
-export class DriverProfileType {
+export class PassengerType {
   @Field(() => Int)
   id: number;
 
   @Field()
   name: string;
 
-  @Field(() => Float)
-  rating: number;
+  @Field({ nullable: true })
+  phone?: string;
+
+  @Field(() => Float, { nullable: true })
+  rating?: number;
 }

@@ -5,33 +5,46 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, MoreThanOrEqual } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Trip } from './entities/trip.entity';
 import { CreateTripDto } from './dto/create-trip.dto';
 import { UpdateTripDto } from './dto/update-trip.dto';
 import { SearchTripsInput, TripSortBy } from './graphql/search-trips.input';
 import { PaginatedTripsType } from './graphql/paginated-trips.type';
+import { Booking } from 'src/bookings/entities/booking.entity';
 
 @Injectable()
 export class TripsService {
   constructor(
     @InjectRepository(Trip)
     private tripRepo: Repository<Trip>,
+    @InjectRepository(Booking)
+    private bookingRepo: Repository<Booking>,
     private eventEmitter: EventEmitter2,
   ) { }
 
-  // MUTATIONS
-
   async createTrip(driverId: number, dto: CreateTripDto) {
+    const tripDate = new Date(dto.date);
+
+    if (tripDate.getTime() <= Date.now()) {
+      throw new BadRequestException(
+        'La date de départ doit être dans le futur',
+      );
+    }
+
     const trip = this.tripRepo.create({
       ...dto,
-      date: new Date(dto.date),
+      date: tripDate,
       driverId,
     });
+
     const saved = await this.tripRepo.save(trip);
 
-    this.eventEmitter.emit('trip.created', { tripId: saved.id, trip: saved });
+    this.eventEmitter.emit('trip.created', {
+      tripId: saved.id,
+      trip: saved,
+    });
 
     return saved;
   }
@@ -46,6 +59,10 @@ export class TripsService {
       throw new BadRequestException('Trajet annulé ou terminé');
     if (new Date(trip.date) <= new Date())
       throw new BadRequestException('Trajet déjà parti');
+    if (dto.seats !== undefined && dto.seats < trip.seatsBooked)
+      throw new BadRequestException(
+        `Impossible : ${trip.seatsBooked} place(s) déjà réservée(s)`,
+      );
 
     Object.assign(trip, {
       ...(dto.departure && { departure: dto.departure }),
@@ -53,9 +70,18 @@ export class TripsService {
       ...(dto.date && { date: new Date(dto.date) }),
       ...(dto.seats !== undefined && { seats: dto.seats }),
       ...(dto.price !== undefined && { price: dto.price }),
+      ...(dto.description && { description: dto.description }),
     });
 
-    return this.tripRepo.save(trip);
+    const updated = await this.tripRepo.save(trip);
+
+    this.eventEmitter.emit('trip.updated', {
+      tripId: trip.id,
+      driverId: trip.driverId,
+      changes: dto,
+    });
+
+    return updated;
   }
 
   async cancelTrip(tripId: number, driverId: number, reason?: string) {
@@ -78,17 +104,6 @@ export class TripsService {
     return updated;
   }
 
-  async completeTrip(tripId: number) {
-    const trip = await this.tripRepo.findOne({ where: { id: tripId } });
-    if (!trip) throw new NotFoundException('Trajet introuvable');
-    trip.status = 'completed';
-    const updated = await this.tripRepo.save(trip);
-    this.eventEmitter.emit('trip.completed', { tripId });
-    return updated;
-  }
-
-  // SIMPLE QUERIES
-
   async getMyTrips(driverId: number) {
     return this.tripRepo.find({
       where: { driverId },
@@ -102,26 +117,45 @@ export class TripsService {
     return trip;
   }
 
-  async getTripsByStatus(status: string) {
-    return this.tripRepo.find({
-      where: { status },
+  async getUpcomingTrips(page = 1, limit = 10) {
+    const [trips, total] = await this.tripRepo.findAndCount({
+      where: {
+        status: 'active',
+        date: MoreThanOrEqual(new Date()),
+      },
       order: { date: 'ASC' },
+      skip: (page - 1) * limit,
+      take: limit,
     });
+    return trips;
   }
 
-  async getTripsStats(driverId: number) {
-    const trips = await this.tripRepo.find({ where: { driverId } });
+  async completeTrip(tripId: number, driverId: number) {
+    const trip = await this.tripRepo.findOne({ where: { id: tripId } });
+    if (!trip) throw new NotFoundException('Trajet introuvable');
+    if (trip.driverId !== driverId)
+      throw new ForbiddenException(
+        "Vous n'êtes pas le conducteur de ce trajet",
+      );
 
-    return {
-      totalTrips: trips.length,
-      activeTrips: trips.filter((t) => t.status === 'active').length,
-      completedTrips: trips.filter((t) => t.status === 'completed').length,
-      cancelledTrips: trips.filter((t) => t.status === 'cancelled').length,
-      totalSeats: trips.reduce((sum, t) => sum + t.seats, 0),
-    };
+    const bookings = await this.bookingRepo.find({
+      where: { tripId, status: 'confirmed' },
+    });
+    const passengerIds = bookings.map((b) => b.passengerId);
+
+    trip.status = 'completed';
+    const updated = await this.tripRepo.save(trip);
+
+    this.eventEmitter.emit('trip.completed', {
+      tripId: trip.id,
+      driverId: trip.driverId,
+      passengerIds,
+      departure: trip.departure, // ← ajouté car sta3mltou pour le module de reviews
+      destination: trip.destination, // ← ajouté
+    });
+
+    return updated;
   }
-
-  // ADVANCED QUERIES
 
   async searchTrips(filters: SearchTripsInput): Promise<PaginatedTripsType> {
     const {
@@ -175,7 +209,6 @@ export class TripsService {
       qb.andWhere('trip.price <= :maxPrice', { maxPrice });
     }
 
-
     // Cursor pagination setup
     let afterSortValue: any = undefined;
     let afterId: number | undefined = undefined;
@@ -202,15 +235,21 @@ export class TripsService {
     if (after) {
       const sortOperator = sortOrder === 'ASC' ? '>' : '<';
       if (sortBy === TripSortBy.DRIVER_RATING) {
-        qb.andWhere(`(
+        qb.andWhere(
+          `(
           (driver.rating ${sortOperator} :afterSortValue)
           OR (driver.rating = :afterSortValue AND trip.id > :afterId)
-        )`, { afterSortValue, afterId });
+        )`,
+          { afterSortValue, afterId },
+        );
       } else {
-        qb.andWhere(`(
+        qb.andWhere(
+          `(
           (trip.${sortBy} ${sortOperator} :afterSortValue)
           OR (trip.${sortBy} = :afterSortValue AND trip.id > :afterId)
-        )`, { afterSortValue, afterId });
+        )`,
+          { afterSortValue, afterId },
+        );
       }
     }
 
@@ -236,9 +275,29 @@ export class TripsService {
       edges,
       pageInfo: {
         hasNextPage,
-        endCursor: edges.length > 0 ? edges[edges.length - 1].cursor : undefined,
+        endCursor:
+          edges.length > 0 ? edges[edges.length - 1].cursor : undefined,
       },
     };
+  }
+
+  async getTripsStats(driverId: number) {
+    const trips = await this.tripRepo.find({ where: { driverId } });
+
+    return {
+      totalTrips: trips.length,
+      activeTrips: trips.filter((t) => t.status === 'active').length,
+      completedTrips: trips.filter((t) => t.status === 'completed').length,
+      cancelledTrips: trips.filter((t) => t.status === 'cancelled').length,
+      totalSeats: trips.reduce((sum, t) => sum + t.seats, 0),
+    };
+  }
+
+  async getTripsByStatus(status: string) {
+    return this.tripRepo.find({
+      where: { status },
+      order: { date: 'ASC' },
+    });
   }
 
   async tripsNearDate(date: string, rangeDays: number) {
@@ -256,6 +315,7 @@ export class TripsService {
       .orderBy('trip.date', 'ASC')
       .getMany();
   }
+
 
   // CURSOR HELPERS
 
@@ -278,5 +338,28 @@ export class TripsService {
     } catch (e) {
       throw new BadRequestException('Invalid cursor');
     }
+  }
+
+  async countCompletedTripsByDriver(driverId: number): Promise<number> {
+    return this.tripRepo.count({
+      where: { driverId, status: 'completed' },
+    });
+  }
+
+  async getAllDriversTripCounts(): Promise<
+    { driverId: number; count: number }[]
+  > {
+    const result = await this.tripRepo
+      .createQueryBuilder('trip')
+      .select('trip.driverId', 'driverId')
+      .addSelect('COUNT(*)', 'count')
+      .where('trip.status = :status', { status: 'completed' })
+      .groupBy('trip.driverId')
+      .getRawMany();
+
+    return result.map((r) => ({
+      driverId: r.driverId,
+      count: parseInt(r.count),
+    }));
   }
 }

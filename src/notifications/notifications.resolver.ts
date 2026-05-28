@@ -6,10 +6,12 @@ import {
   TripMatchedAlertPayload,
   BookingConfirmedPayload,
   TripCancelledPayload,
+  TripUpdatedPayload,
 } from './graphql/notification.types';
 import {
   TOPIC_BOOKING_CONFIRMED,
   TOPIC_TRIP_CANCELLED,
+  TOPIC_TRIP_UPDATED,
 } from './notifications.listener';
 import { TOPIC_TRIP_MATCHED_ALERT } from '../trips/trip-created.listener';
 
@@ -24,9 +26,15 @@ export class NotificationsResolver {
   @Subscription(() => TripMatchedAlertPayload, {
     filter: (payload, variables) => {
       const trip = payload.tripMatchedAlert.trip;
-      if (variables.from && trip.departure?.toLowerCase() !== variables.from.toLowerCase())
+      if (
+        variables.from &&
+        trip.departure?.toLowerCase() !== variables.from.toLowerCase()
+      )
         return false;
-      if (variables.to && trip.destination?.toLowerCase() !== variables.to.toLowerCase())
+      if (
+        variables.to &&
+        trip.destination?.toLowerCase() !== variables.to.toLowerCase()
+      )
         return false;
       return true;
     },
@@ -49,9 +57,7 @@ export class NotificationsResolver {
     filter: (payload, variables) =>
       payload.bookingConfirmed.passengerId === variables.userId,
   })
-  bookingConfirmed(
-    @Args('userId', { type: () => Int }) userId: number,
-  ) {
+  bookingConfirmed(@Args('userId', { type: () => Int }) userId: number) {
     return this.pubSub.asyncIterableIterator(TOPIC_BOOKING_CONFIRMED);
   }
 
@@ -59,9 +65,15 @@ export class NotificationsResolver {
   @Subscription(() => TripCancelledPayload, {
     filter: (payload, variables) => true,
   })
-  tripCancelled(
-    @Args('userId', { type: () => Int }) userId: number,
-  ) {
+  tripCancelled(@Args('userId', { type: () => Int }) userId: number) {
     return this.pubSub.asyncIterableIterator(TOPIC_TRIP_CANCELLED);
+  }
+
+  @Subscription(() => TripUpdatedPayload, {
+    filter: (payload, variables) =>
+      payload.tripUpdated.tripId === variables.tripId,
+  })
+  tripUpdated(@Args('tripId') tripId: number) {
+    return this.pubSub.asyncIterableIterator(TOPIC_TRIP_UPDATED);
   }
 }

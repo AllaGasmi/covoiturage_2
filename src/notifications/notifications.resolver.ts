@@ -57,8 +57,7 @@ export class NotificationsResolver {
 
   // Subscription 3: passenger gets notified when their trip is cancelled
   @Subscription(() => TripCancelledPayload, {
-    filter: (payload, variables) =>
-      payload.tripCancelled.tripId === variables.userId,
+    filter: (payload, variables) => true,
   })
   tripCancelled(
     @Args('userId', { type: () => Int }) userId: number,

@@ -8,10 +8,10 @@ import { TripType } from '../trips/graphql/trip.type';
 import { Booking } from './entities/booking.entity';
 import { Trip } from '../trips/entities/trip.entity';
 import { User } from '../users/entities/user.entity';
-import { GqlAuthGuard } from 'src/auth/guards/gql-auth.guard';
 import { UseGuards } from '@nestjs/common';
+import { GqlJwtAuthGuard } from 'src/auth/guards/gql-jwt-auth.guard';
 
-@UseGuards(GqlAuthGuard)
+@UseGuards(GqlJwtAuthGuard)
 @Resolver(() => BookingWithTripType)
 export class BookingsResolver {
   constructor(
